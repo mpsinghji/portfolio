@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { TextPlugin } from 'gsap/TextPlugin'
@@ -20,6 +21,7 @@ type Project = {
 function App() {
   const [isLoading, setIsLoading] = useState(true)
   const loaderRef = useRef<HTMLDivElement | null>(null)
+  const [showAllProjects, setShowAllProjects] = useState(false)
 
   const projects = useMemo<Project[]>(
     () => [
@@ -232,17 +234,6 @@ function App() {
       })
     })
 
-    gsap.utils.toArray<HTMLElement>('.pcard').forEach((card, i) => {
-      gsap.to(card, {
-          opacity: 1,
-          y: 0,
-          duration: 0.75,
-        delay: i * 0.1,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: '#projects .proj-grid', start: 'top 72%' },
-        })
-      })
-
       ;['#ti1', '#ti2', '#ti3'].forEach((s, i) => {
         gsap.to(s, {
           opacity: 1,
@@ -274,7 +265,13 @@ function App() {
       })
     })
 
-    // Project cards tilt
+    return () => {
+      ScrollTrigger.getAll().forEach((t) => t.kill())
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showAllProjects) return
     const cards = Array.from(document.querySelectorAll<HTMLElement>('.pcard'))
     const onMoveByCard = new Map<HTMLElement, (e: MouseEvent) => void>()
     const onLeaveByCard = new Map<HTMLElement, () => void>()
@@ -300,9 +297,8 @@ function App() {
         if (om) card.removeEventListener('mousemove', om)
         if (ol) card.removeEventListener('mouseleave', ol)
       })
-      ScrollTrigger.getAll().forEach((t) => t.kill())
     }
-  }, [])
+  }, [showAllProjects])
 
   useEffect(() => {
     // Three.js scenes (ported from HTML, minimal cleanup)
@@ -1290,39 +1286,86 @@ function App() {
           </div>
         </div>
 
-        <div className="proj-grid">
-          {projects.map((project, index) => {
-            const cardNumber = String(index + 1).padStart(2, '0')
+        {!showAllProjects ? (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem', marginBottom: '2rem' }}>
+            <button className="hbtn fill" onClick={() => setShowAllProjects(true)} style={{ cursor: 'pointer', zIndex: 10 }}>
+              View All Projects
+            </button>
+          </div>
+        ) : null}
 
-            return (
-              <div className="pcard" id={`pfc${index + 1}`} key={project.title}>
-                <div className="pcard-vis">
-                  {project.img ? (
-                    <img className={`pcard-img ${project.isMobileShot ? 'pcard-img-mobile' : ''}`} src={project.img} alt={project.title} />
-                  ) : (
-                    <div className="pcard-img pcard-img-fallback">COMING SOON</div>
-                  )}
-                  <div className="pcard-num">{cardNumber}</div>
-                </div>
-                <div className="pcard-body">
-                  <div className="pcard-tag">{project.tag}</div>
-                  <div className="pcard-ttl">{project.title}</div>
-                  <div className="pcard-desc">{project.desc}</div>
-                  <div className="pcard-stack">
-                    {project.stack.map((c) => (
-                      <span key={c} className="chip">
-                        {c}
-                      </span>
-                    ))}
+        <AnimatePresence>
+          {showAllProjects && (
+            <motion.div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 9990,
+                backgroundColor: 'rgba(2, 12, 8, 0.95)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                overflowY: 'auto',
+                padding: '4rem 2rem'
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div className="proj-ht" style={{ margin: 0, fontSize: 'clamp(2.5rem, 5vw, 4rem)' }}>
+                    ALL <span className="dim">PROJECTS</span>
                   </div>
-                  <a href={project.link} target="_blank" rel="noreferrer" className="pcard-link">
-                    Live Demo →
-                  </a>
+                  <button className="hbtn ghost" onClick={() => setShowAllProjects(false)} style={{ cursor: 'pointer' }}>
+                    Close [X]
+                  </button>
+                </div>
+
+                <div className="proj-grid" style={{ padding: '0', margin: '0' }}>
+                  {projects.map((project, index) => {
+                    const cardNumber = String(index + 1).padStart(2, '0')
+
+                    return (
+                      <motion.div 
+                        className="pcard" 
+                        id={`pfc${index + 1}`} 
+                        key={project.title}
+                        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.6, delay: index * 0.1, type: 'spring', stiffness: 100 }}
+                      >
+                        <div className="pcard-vis">
+                          {project.img ? (
+                            <img className={`pcard-img ${project.isMobileShot ? 'pcard-img-mobile' : ''}`} src={project.img} alt={project.title} />
+                          ) : (
+                            <div className="pcard-img pcard-img-fallback">COMING SOON</div>
+                          )}
+                          <div className="pcard-num">{cardNumber}</div>
+                        </div>
+                        <div className="pcard-body">
+                          <div className="pcard-tag">{project.tag}</div>
+                          <div className="pcard-ttl">{project.title}</div>
+                          <div className="pcard-desc">{project.desc}</div>
+                          <div className="pcard-stack">
+                            {project.stack.map((c) => (
+                              <span key={c} className="chip">
+                                {c}
+                              </span>
+                            ))}
+                          </div>
+                          <a href={project.link} target="_blank" rel="noreferrer" className="pcard-link">
+                            Live Demo →
+                          </a>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
                 </div>
               </div>
-            )
-          })}
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
       <section id="experience">
