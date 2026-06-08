@@ -980,9 +980,8 @@ function App() {
           <a href="#contact">contact</a>
         </div>
         <a
-          href="https://www.playbook.com/mpji/ZQoLVKNNi16aoWvhwj5pQ2Xx?assetToken=qySgK6SzXEQiH5dvAMMEPY1G"
-          target="_blank"
-          rel="noreferrer"
+          href="/Resume.pdf"
+          download="Resume.pdf"
           className="nav-cta"
         >
           resume ↗
@@ -1453,9 +1452,8 @@ function App() {
                 LinkedIn
               </a>
               <a
-                href="https://www.playbook.com/mpji/ZQoLVKNNi16aoWvhwj5pQ2Xx?assetToken=qySgK6SzXEQiH5dvAMMEPY1G"
-                target="_blank"
-                rel="noreferrer"
+                href="/Resume.pdf"
+                download="Resume.pdf"
                 className="soc"
               >
                 Resume ↗
