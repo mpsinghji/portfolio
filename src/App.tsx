@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { TextPlugin } from 'gsap/TextPlugin'
 import * as THREE from 'three'
 import emailjs from '@emailjs/browser'
+
+import { sfx } from './utils/audio'
+import { ProjectShowroomModal, type ProjectData } from './components/ProjectShowroomModal'
 
 import callHelperMockup from './assets/callhelper_real_mockup.jpg'
 import dynamicEdgeMockup from './assets/dynamicedge_real_mockup.jpg'
@@ -16,24 +19,292 @@ import speedControlImg from './assets/SpeedControl.png'
 
 gsap.registerPlugin(ScrollTrigger, TextPlugin)
 
-type Project = {
-  title: string
-  link: string
-  github?: string
-  apkLink?: string
-  img: string | null
-  tag: string
+export type Project = ProjectData & {
   badge: string
   category: 'all' | 'web' | 'mobile' | 'tools'
-  desc: string
-  stack: string[]
-  isMobileShot?: boolean
+}
+
+const cubicEase: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+const stageVariants: Variants = {
+  initial: (dir: string) => {
+    switch (dir) {
+      case 'right': return { x: '100%', opacity: 0 }
+      case 'left': return { x: '-100%', opacity: 0 }
+      case 'up': return { y: '100%', opacity: 0 }
+      case 'down': return { y: '-100%', opacity: 0 }
+      case 'center': return { scale: 0.9, opacity: 0 }
+      default: return { opacity: 0 }
+    }
+  },
+  animate: {
+    x: 0,
+    y: 0,
+    scale: 1,
+    opacity: 1,
+    transition: { duration: 0.45, ease: cubicEase },
+  },
+  exit: (dir: string) => {
+    switch (dir) {
+      case 'right': return { x: '-35%', opacity: 0, transition: { duration: 0.3, ease: cubicEase } }
+      case 'left': return { x: '35%', opacity: 0, transition: { duration: 0.3, ease: cubicEase } }
+      case 'up': return { y: '-35%', opacity: 0, transition: { duration: 0.3, ease: cubicEase } }
+      case 'down': return { y: '35%', opacity: 0, transition: { duration: 0.3, ease: cubicEase } }
+      case 'center': return { scale: 1.05, opacity: 0, transition: { duration: 0.3 } }
+      default: return { opacity: 0, transition: { duration: 0.3 } }
+    }
+  },
+}
+
+function HeroCode3D() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const wrap = wrapRef.current
+    if (!canvas || !wrap) return
+
+    let raf = 0
+    let renderer: THREE.WebGLRenderer | null = null
+
+    const W = () => wrap.offsetWidth || 560
+    const H = () => wrap.offsetHeight || 560
+
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setSize(W(), H())
+
+      const S = new THREE.Scene()
+      const C = new THREE.PerspectiveCamera(55, W() / H(), 0.1, 100)
+      C.position.set(0, 0, 7)
+
+      const grp = new THREE.Group()
+      S.add(grp)
+
+      const winW = 4
+      const winH = 2.8
+      const winGeo = new THREE.BoxGeometry(winW, winH, 0.06)
+      const winMat = new THREE.MeshPhongMaterial({
+        color: 0x040f0a,
+        emissive: 0x010804,
+        shininess: 80,
+        transparent: true,
+        opacity: 0.95,
+      })
+      const win = new THREE.Mesh(winGeo, winMat)
+      grp.add(win)
+
+      const edgeGeo = new THREE.EdgesGeometry(winGeo)
+      const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ff6a, transparent: true, opacity: 0.35 })
+      grp.add(new THREE.LineSegments(edgeGeo, edgeMat))
+
+      const tbGeo = new THREE.BoxGeometry(winW, 0.28, 0.07)
+      const tbMat = new THREE.MeshPhongMaterial({ color: 0x061410, emissive: 0x021008, shininess: 20 })
+      const tb = new THREE.Mesh(tbGeo, tbMat)
+      tb.position.y = winH / 2 - 0.14
+      grp.add(tb)
+
+      const dots = [0xff5f56, 0xffbd2e, 0x27c93f]
+      dots.forEach((c, i) => {
+        const dg = new THREE.SphereGeometry(0.055, 12, 12)
+        const dm = new THREE.MeshPhongMaterial({ color: c, emissive: c, emissiveIntensity: 0.4 })
+        const d = new THREE.Mesh(dg, dm)
+        d.position.set(-winW / 2 + 0.25 + i * 0.2, winH / 2 - 0.14, 0.05)
+        grp.add(d)
+      })
+
+      const linesData = [
+        { w: 2.8, c: 0x00ff6a, e: 0.4, y: 0.9 },
+        { w: 1.8, c: 0x00ffe0, e: 0.3, y: 0.7 },
+        { w: 2.4, c: 0xffffff, e: 0.1, y: 0.5 },
+        { w: 1.2, c: 0x9d4edd, e: 0.4, y: 0.3 },
+        { w: 2.6, c: 0x00ff6a, e: 0.35, y: 0.1 },
+        { w: 2.0, c: 0xffbe0b, e: 0.3, y: -0.1 },
+        { w: 1.5, c: 0x00ffe0, e: 0.3, y: -0.3 },
+        { w: 2.3, c: 0xffffff, e: 0.1, y: -0.5 },
+        { w: 1.9, c: 0x00ff6a, e: 0.3, y: -0.7 },
+        { w: 2.5, c: 0x9d4edd, e: 0.3, y: -0.9 },
+        { w: 1.4, c: 0x00ffe0, e: 0.4, y: -1.1 },
+      ]
+      const codeLines: Array<{ mesh: THREE.Mesh }> = []
+      linesData.forEach((l) => {
+        const lg = new THREE.BoxGeometry(l.w, 0.06, 0.08)
+        const lm = new THREE.MeshPhongMaterial({
+          color: l.c,
+          emissive: l.c,
+          emissiveIntensity: l.e,
+          transparent: true,
+          opacity: 0.85,
+        })
+        const m = new THREE.Mesh(lg, lm)
+        m.position.set(-winW / 2 + 0.35 + l.w / 2, l.y, 0.04)
+        grp.add(m)
+        codeLines.push({ mesh: m })
+      })
+
+      const lnGeo = new THREE.BoxGeometry(0.18, winH - 0.3, 0.07)
+      const lnMat = new THREE.MeshPhongMaterial({
+        color: 0x020804,
+        emissive: 0x010502,
+        transparent: true,
+        opacity: 0.9,
+      })
+      const ln = new THREE.Mesh(lnGeo, lnMat)
+      ln.position.set(-winW / 2 + 0.14, -0.14, 0.04)
+      grp.add(ln)
+
+      const curGeo = new THREE.BoxGeometry(0.03, 0.18, 0.1)
+      const curMat = new THREE.MeshPhongMaterial({ color: 0x00ff6a, emissive: 0x00ff6a, emissiveIntensity: 1 })
+      const curMesh = new THREE.Mesh(curGeo, curMat)
+      curMesh.position.set(-winW / 2 + 0.35 + 1.4 + 0.08, -1.1, 0.05)
+      grp.add(curMesh)
+
+      const floaters: Array<{ mesh: THREE.Mesh; lines: THREE.LineSegments; baseY: number; speed: number; phase: number }> = []
+      const fData = [
+        { w: 0.9, h: 0.55, x: 2.4, y: 1.2, z: 0.8, c: 0x00ff6a },
+        { w: 0.8, h: 0.5, x: -2.3, y: -0.9, z: 0.6, c: 0x00ffe0 },
+        { w: 0.7, h: 0.45, x: 2.2, y: -1.1, z: 0.5, c: 0x9d4edd },
+      ]
+      fData.forEach((f, i) => {
+        const fg = new THREE.BoxGeometry(f.w, f.h, 0.05)
+        const fm = new THREE.MeshPhongMaterial({ color: 0x040f0a, emissive: 0x010804, transparent: true, opacity: 0.85 })
+        const fmesh = new THREE.Mesh(fg, fm)
+        fmesh.position.set(f.x, f.y, f.z)
+        const fe = new THREE.EdgesGeometry(fg)
+        const fem = new THREE.LineBasicMaterial({ color: f.c, transparent: true, opacity: 0.4 })
+        const flines = new THREE.LineSegments(fe, fem)
+        flines.position.copy(fmesh.position)
+        grp.add(fmesh)
+        grp.add(flines)
+        floaters.push({ mesh: fmesh, lines: flines, baseY: f.y, speed: 0.8 + i * 0.3, phase: i * 1.5 })
+      })
+
+      const tokens: Array<{ mesh: THREE.Mesh; angle: number; r: number; speed: number; y: number }> = []
+      const tokenCols = [0x00ff6a, 0x00ffe0, 0x9d4edd, 0xffbe0b]
+      for (let i = 0; i < 14; i++) {
+        const tg = new THREE.BoxGeometry(0.2 + Math.random() * 0.3, 0.06, 0.06)
+        const tc = tokenCols[i % tokenCols.length]
+        const tm = new THREE.MeshPhongMaterial({ color: tc, emissive: tc, emissiveIntensity: 0.5, transparent: true, opacity: 0.7 })
+        const tmesh = new THREE.Mesh(tg, tm)
+        grp.add(tmesh)
+        tokens.push({ mesh: tmesh, angle: (i / 14) * Math.PI * 2, r: 2.6 + Math.random() * 0.8, speed: 0.4 + Math.random() * 0.4, y: (Math.random() - 0.5) * 2.5 })
+      }
+
+      const light1 = new THREE.PointLight(0x00ff6a, 3, 15)
+      light1.position.set(3, 3, 4)
+      S.add(light1)
+      const light2 = new THREE.PointLight(0x00ffe0, 2, 12)
+      light2.position.set(-3, -2, 3)
+      S.add(light2)
+      const light3 = new THREE.PointLight(0x9d4edd, 1.5, 10)
+      light3.position.set(0, -3, 2)
+      S.add(light3)
+      S.add(new THREE.AmbientLight(0x020c08, 0.8))
+
+      let tX = 0
+      let tY = 0
+      let cX = 0
+      let cY = 0
+      const onMouseMove = (e: MouseEvent) => {
+        const rect = wrap.getBoundingClientRect()
+        tX = ((e.clientX - rect.left) / (rect.width || 1) - 0.5) * 2
+        tY = ((e.clientY - rect.top) / (rect.height || 1) - 0.5) * 2
+      }
+      const onMouseLeave = () => {
+        tX = 0
+        tY = 0
+      }
+      wrap.addEventListener('mousemove', onMouseMove)
+      wrap.addEventListener('mouseleave', onMouseLeave)
+
+      const onResize = () => {
+        if (!renderer || !canvas) return
+        const w = wrap.offsetWidth || 560
+        const h = wrap.offsetHeight || 560
+        renderer.setSize(w, h)
+        C.aspect = w / h
+        C.updateProjectionMatrix()
+      }
+      window.addEventListener('resize', onResize)
+      const ro = new ResizeObserver(onResize)
+      ro.observe(wrap)
+
+      let clT = 0
+      const a = (t: number) => {
+        raf = requestAnimationFrame(a)
+        const sec = t * 0.001
+        cX += (tX - cX) * 0.05
+        cY += (tY - cY) * 0.05
+
+        grp.rotation.y = cX * 0.35 + Math.sin(sec * 0.5) * 0.06
+        grp.rotation.x = -cY * 0.25 + Math.cos(sec * 0.4) * 0.04
+        grp.position.y = Math.sin(sec * 0.8) * 0.08
+
+        curMesh.visible = Math.floor(sec * 2) % 2 === 0
+
+        clT += 0.016
+        if (clT > 0.08) {
+          clT = 0
+          const randLine = codeLines[Math.floor(Math.random() * codeLines.length)]
+          if (randLine) {
+            const mat = randLine.mesh.material as THREE.MeshPhongMaterial
+            mat.emissiveIntensity = 0.8
+            setTimeout(() => {
+              mat.emissiveIntensity = 0.3
+            }, 150)
+          }
+        }
+
+        floaters.forEach((fl) => {
+          fl.mesh.position.y = fl.baseY + Math.sin(sec * fl.speed + fl.phase) * 0.12
+          fl.lines.position.y = fl.mesh.position.y
+          fl.mesh.rotation.y = Math.sin(sec * 0.6 + fl.phase) * 0.08
+          fl.lines.rotation.y = fl.mesh.rotation.y
+        })
+
+        tokens.forEach((tk) => {
+          tk.angle += tk.speed * 0.01
+          tk.mesh.position.x = Math.cos(tk.angle) * tk.r
+          tk.mesh.position.y = tk.y + Math.sin(sec + tk.angle) * 0.15
+          tk.mesh.position.z = Math.sin(tk.angle) * tk.r * 0.4 - 1
+          tk.mesh.rotation.z = tk.angle * 0.3
+        })
+
+        renderer?.render(S, C)
+      }
+      a(0)
+
+      return () => {
+        cancelAnimationFrame(raf)
+        ro.disconnect()
+        wrap.removeEventListener('mousemove', onMouseMove)
+        wrap.removeEventListener('mouseleave', onMouseLeave)
+        window.removeEventListener('resize', onResize)
+        renderer?.dispose()
+      }
+    } catch {
+      // Graceful fallback
+    }
+  }, [])
+
+  return (
+    <div ref={wrapRef} className="hero-right">
+      <canvas ref={canvasRef} id="hero-code-canvas" />
+    </div>
+  )
 }
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
   const loaderRef = useRef<HTMLDivElement | null>(null)
   const [activeCategory, setActiveCategory] = useState<'all' | 'web' | 'mobile' | 'tools'>('all')
+
+  // Multi-Stage Interactive App States
+  const [currentView, setCurrentView] = useState<'home' | 'work' | 'about' | 'skills' | 'contact'>('home')
+  const [direction, setDirection] = useState<'left' | 'right' | 'up' | 'down' | 'center'>('center')
+  const [selectedShowroomProject, setSelectedShowroomProject] = useState<ProjectData | null>(null)
 
   const projects = useMemo<Project[]>(
     () => [
@@ -45,8 +316,24 @@ function App() {
         tag: 'Clinic SaaS / Healthcare',
         badge: 'Full-Stack SaaS',
         category: 'web',
+        isPrivate: true,
         desc: 'Cloud clinic management system with digital prescriptions, IP-lockout security, appointment scheduling, and patient records.',
         stack: ['React', 'Node.js', 'Express', 'MongoDB Atlas', 'Cloudinary'],
+        architectureDetails: {
+          overview: 'High-availability clinic operations portal engineered to centralize patient electronic health records (EHR), multi-doctor schedules, and automated medical billing.',
+          keyFeatures: [
+            'HIPAA-aligned Patient EHR & Prescription Workflow',
+            'Doctor Multi-Calendar Slot Management & Real-time Booking',
+            'IP-Lockout Security & Brute-Force Rate Limiting Middleware',
+            'PDF Invoice & Prescription Generator with Cloudinary Storage',
+          ],
+          systemSpecs: [
+            { label: 'SECURITY', value: 'IP-Lockout / JWT' },
+            { label: 'DATABASE', value: 'MongoDB Atlas' },
+            { label: 'LATENCY', value: '< 45ms P95' },
+            { label: 'ACCESS', value: 'Private Enterprise' },
+          ],
+        },
       },
       {
         title: 'SecureShare',
@@ -56,34 +343,80 @@ function App() {
         tag: 'Document Security / Cloud',
         badge: 'Enterprise SaaS',
         category: 'web',
+        isPrivate: true,
         desc: 'High-security document distribution platform with granular access audits, encrypted cloud storage via Supabase S3, and Neon PostgreSQL.',
         stack: ['React', 'Node.js', 'PostgreSQL', 'Supabase', 'JWT'],
+        architectureDetails: {
+          overview: 'Enterprise-grade end-to-end encrypted document sharing platform with zero-trust role-based access control.',
+          keyFeatures: [
+            'Client-side AES-256-GCM chunked file encryption & streaming decryption',
+            'Supabase S3 secure bucket storage with signed, time-limited token URLs',
+            'Neon PostgreSQL relational schema for access logs & forensic audit trails',
+            'Expiring one-time view links & tamper-proof download limits',
+          ],
+          systemSpecs: [
+            { label: 'ENCRYPTION', value: 'AES-256-GCM' },
+            { label: 'STORAGE', value: 'Supabase S3' },
+            { label: 'DATABASE', value: 'Neon Postgres' },
+            { label: 'ACCESS', value: 'Private Enterprise' },
+          ],
+        },
       },
       {
         title: 'CallHelper',
-        link: 'https://github.com/mpsinghji/Call-Helper',
+        link: '',
         github: 'https://github.com/mpsinghji/Call-Helper',
-        apkLink: 'https://github.com/mpsinghji/Call-Helper/releases',
         img: callHelperMockup,
-        tag: 'Android System App',
+        tag: 'Android System Daemon',
         badge: 'Android Native',
         category: 'mobile',
+        isPrivate: true,
+        isMobileShot: true,
         desc: 'Intelligent incoming-call assistant that announces callers over Bluetooth/speaker, handles voice commands, and integrates Truecaller.',
         stack: ['Kotlin', 'Android SDK', 'Telecom API', 'Bluetooth SCO'],
-        isMobileShot: true,
+        architectureDetails: {
+          overview: 'Native Android background service utilizing telephony APIs to manage incoming calls completely hands-free via voice commands and Bluetooth.',
+          keyFeatures: [
+            'Real-time voice recognition loop during incoming ringing state',
+            'Bluetooth SCO & A2DP audio routing for wireless earphones & vehicle head units',
+            'Truecaller notification interception & speech announcement synthesis',
+            'Android Foreground Service architecture with battery-saver optimization',
+          ],
+          systemSpecs: [
+            { label: 'PLATFORM', value: 'Android ART / Kotlin' },
+            { label: 'AUDIO', value: 'Bluetooth SCO / TTS' },
+            { label: 'PERMISSIONS', value: 'Telecom / Notification' },
+            { label: 'ACCESS', value: 'Private Native Build' },
+          ],
+        },
       },
       {
         title: 'Dynamic Edge AI',
-        link: 'https://github.com/mpsinghji/DynamicEdgeAI',
+        link: '',
         github: 'https://github.com/mpsinghji/DynamicEdgeAI',
-        apkLink: 'https://github.com/mpsinghji/DynamicEdgeAI/releases',
         img: dynamicEdgeMockup,
         tag: 'Adaptive Edge AI',
         badge: 'Android AI Research',
         category: 'mobile',
+        isPrivate: true,
+        isMobileShot: true,
         desc: 'Adaptive edge-cloud AI system dynamically routing inference between on-device LLaMA C++ and Cloud Gemini based on RAM & thermals.',
         stack: ['Kotlin', 'Android SDK', 'LLaMA C++', 'Gemini API'],
-        isMobileShot: true,
+        architectureDetails: {
+          overview: 'Hybrid edge-cloud AI research system continuously balancing local on-device LLaMA C++ inference against cloud Gemini 1.5 Flash.',
+          keyFeatures: [
+            'Real-time device telemetry: monitors free RAM, CPU thermal load, and bandwidth',
+            'Adaptive model switcher: auto-routes to on-device LLaMA when offline or low RAM',
+            'Native C++ JNI bridge bindings for quantized GGUF weights',
+            'Zero-data-leakage local fallback for privacy-sensitive prompts',
+          ],
+          systemSpecs: [
+            { label: 'LOCAL ENGINE', value: 'LLaMA C++ (GGUF)' },
+            { label: 'CLOUD ENGINE', value: 'Gemini 1.5 Flash' },
+            { label: 'TELEMETRY', value: 'Live RAM & Thermals' },
+            { label: 'ACCESS', value: 'Research Prototype' },
+          ],
+        },
       },
       {
         title: 'BlogVerse',
@@ -95,6 +428,21 @@ function App() {
         category: 'web',
         desc: 'Full-featured blogging platform with authentication, rich text editor, comments system, interactions, and user profiles.',
         stack: ['React', 'Node.js', 'MongoDB', 'JWT'],
+        architectureDetails: {
+          overview: 'Content publishing web application designed for high editorial flexibility with real-time markdown parsing.',
+          keyFeatures: [
+            'Custom markdown & rich-text editor with instant live preview',
+            'JWT authenticated session management with HTTP-only cookies',
+            'Nested comment hierarchies and social reaction tracking',
+            'RESTful API with Mongoose schema indexing',
+          ],
+          systemSpecs: [
+            { label: 'STACK', value: 'MERN Architecture' },
+            { label: 'DATABASE', value: 'MongoDB Atlas' },
+            { label: 'AUTH', value: 'JWT / Bcrypt' },
+            { label: 'STATUS', value: 'Live on Vercel' },
+          ],
+        },
       },
       {
         title: 'CampusSync',
@@ -143,6 +491,18 @@ function App() {
     ],
     [],
   )
+
+  const navigateTo = (view: 'home' | 'work' | 'about' | 'skills' | 'contact') => {
+    if (view === currentView) return
+    sfx.playSelectThud()
+    if (view === 'work') setDirection('right')
+    else if (view === 'about') setDirection('left')
+    else if (view === 'skills') setDirection('center')
+    else if (view === 'contact') setDirection('up')
+    else setDirection('down')
+    setCurrentView(view)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
 
   useEffect(() => {
     // Cursor
@@ -253,89 +613,13 @@ function App() {
   }, [])
 
   useEffect(() => {
-    // Scroll-triggered animations
-    gsap.to('#about-txt', {
-      opacity: 1,
-      x: 0,
-      duration: 1.1,
-      ease: 'power3.out',
-      scrollTrigger: { trigger: '#about', start: 'top 65%' },
-    })
-
-    document.querySelectorAll<HTMLElement>('.stat-n').forEach((el) => {
-      const t = Number(el.dataset.count || 0)
-      ScrollTrigger.create({
-        trigger: el,
-        start: 'top 88%',
-        onEnter: () => {
-          let v = 0
-          const iv = window.setInterval(() => {
-            v += Math.ceil(t / 28)
-            if (v >= t) {
-              v = t
-              window.clearInterval(iv)
-            }
-            el.textContent = `${v}+`
-          }, 36)
-        },
-      })
-    })
-
-    gsap.utils.toArray<HTMLElement>('.sk-card').forEach((el, i) => {
-      gsap.to(el, {
-        opacity: 1,
-        y: 0,
-        duration: 0.65,
-        delay: i * 0.08,
-        ease: 'power3.out',
-        scrollTrigger: { trigger: '#skills', start: 'top 60%' },
-      })
-      ScrollTrigger.create({
-        trigger: el,
-        start: 'top 90%',
-        onEnter: () => {
-          const fill = el.querySelector<HTMLElement>('.sk-fill')
-          if (!fill) return
-          fill.style.width = `${fill.dataset.p}%`
-        },
-      })
-    })
-
-      ;['#ti1', '#ti2', '#ti3'].forEach((s, i) => {
-        gsap.to(s, {
-          opacity: 1,
-          x: 0,
-          duration: 0.8,
-          delay: i * 0.18,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: '#experience', start: 'top 68%' },
-        })
-      })
-
-    gsap.utils.toArray<HTMLElement>('.eyebrow').forEach((el) => {
-      gsap.from(el, {
-        opacity: 0,
-        x: -24,
-        duration: 0.7,
-        ease: 'power3.out',
-        scrollTrigger: { trigger: el, start: 'top 88%' },
-      })
-    })
-
-    gsap.utils.toArray<HTMLElement>('.about-h, .exp-h, .proj-ht, .contact-h, .skills-h').forEach((el) => {
-      gsap.from(el, {
-        opacity: 0,
-        y: 50,
-        duration: 1,
-        ease: 'expo.out',
-        scrollTrigger: { trigger: el, start: 'top 85%' },
-      })
-    })
-
-    return () => {
-      ScrollTrigger.getAll().forEach((t) => t.kill())
-    }
-  }, [])
+    // Refresh ScrollTrigger and scroll position smoothly to top on view transition
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior })
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh()
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [currentView])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -475,206 +759,6 @@ function App() {
         raf = requestAnimationFrame(a)
         S.rotation.z = t * 0.00025
         C.position.z = 5 + Math.sin(t * 0.0006) * 1.5
-        R.render(S, C)
-      }
-      a(0)
-      cleanups.push(() => cancelAnimationFrame(raf))
-    }
-
-    const heroCode = () => {
-      const canvas = document.getElementById('hero-code-canvas') as HTMLCanvasElement | null
-      if (!canvas) return
-      const wrap = canvas.parentElement as HTMLElement | null
-      if (!wrap) return
-
-      const W = () => wrap.offsetWidth || 560
-      const H = () => wrap.offsetHeight || 560
-
-      const R = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
-      R.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-      R.setSize(W(), H())
-
-      const S = new THREE.Scene()
-      const C = new THREE.PerspectiveCamera(55, W() / H(), 0.1, 100)
-      C.position.set(0, 0, 7)
-
-      const grp = new THREE.Group()
-      S.add(grp)
-
-      const winW = 4
-      const winH = 2.8
-      const winGeo = new THREE.BoxGeometry(winW, winH, 0.06)
-      const winMat = new THREE.MeshPhongMaterial({
-        color: 0x040f0a,
-        emissive: 0x010804,
-        shininess: 80,
-        transparent: true,
-        opacity: 0.95,
-      })
-      const win = new THREE.Mesh(winGeo, winMat)
-      grp.add(win)
-
-      const edgeGeo = new THREE.EdgesGeometry(winGeo)
-      const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ff6a, transparent: true, opacity: 0.35 })
-      grp.add(new THREE.LineSegments(edgeGeo, edgeMat))
-
-      const tbGeo = new THREE.BoxGeometry(winW, 0.28, 0.07)
-      const tbMat = new THREE.MeshPhongMaterial({ color: 0x061410, emissive: 0x021008, shininess: 20 })
-      const tb = new THREE.Mesh(tbGeo, tbMat)
-      tb.position.y = winH / 2 - 0.14
-      grp.add(tb)
-
-      const dotColors = [0xff5f57, 0xfebc2e, 0x00ff6a]
-      dotColors.forEach((c, i) => {
-        const dg = new THREE.SphereGeometry(0.055, 12, 12)
-        const dm = new THREE.MeshPhongMaterial({ color: c, emissive: c, emissiveIntensity: 0.4 })
-        const d = new THREE.Mesh(dg, dm)
-        d.position.set(-winW / 2 + 0.22 + i * 0.22, winH / 2 - 0.14, 0.05)
-        grp.add(d)
-      })
-
-      const lineColors = [
-        { c: 0x00ff6a, w: 1.1, x: -1.1 },
-        { c: 0x00ffe0, w: 2.2, x: -0.05 },
-        { c: 0x4d8c65, w: 0.8, x: -1.35 },
-        { c: 0x00ff6a, w: 0.6, x: -1.55 },
-        { c: 0x9d4edd, w: 1.5, x: -0.75 },
-        { c: 0x00ffe0, w: 1.9, x: -0.25 },
-        { c: 0x4d8c65, w: 2.6, x: 0.1 },
-        { c: 0x00ff6a, w: 0.9, x: -1.25 },
-        { c: 0xc8ff00, w: 1.3, x: -0.95 },
-        { c: 0x00ffe0, w: 2.0, x: -0.2 },
-      ]
-
-      const codeLines: Array<{ mesh: THREE.Mesh }> = []
-      lineColors.forEach((l, i) => {
-        const lg = new THREE.BoxGeometry(l.w, 0.06, 0.08)
-        const lm = new THREE.MeshPhongMaterial({
-          color: l.c,
-          emissive: l.c,
-          emissiveIntensity: 0.3,
-          transparent: true,
-          opacity: 0.85,
-        })
-        const m = new THREE.Mesh(lg, lm)
-        m.position.set(l.x, winH / 2 - 0.5 - i * 0.21, 0.05)
-        grp.add(m)
-        codeLines.push({ mesh: m })
-      })
-
-      const lnGeo = new THREE.BoxGeometry(0.18, winH - 0.3, 0.07)
-      const lnMat = new THREE.MeshPhongMaterial({
-        color: 0x061410,
-        emissive: 0x030c08,
-        shininess: 10,
-        transparent: true,
-        opacity: 0.8,
-      })
-      const ln = new THREE.Mesh(lnGeo, lnMat)
-      ln.position.set(-winW / 2 + 0.09, -0.1, 0.04)
-      grp.add(ln)
-
-      const curGeo = new THREE.BoxGeometry(0.03, 0.18, 0.1)
-      const curMat = new THREE.MeshPhongMaterial({ color: 0x00ff6a, emissive: 0x00ff6a, emissiveIntensity: 1 })
-      const curMesh = new THREE.Mesh(curGeo, curMat)
-      curMesh.position.set(0.4, winH / 2 - 0.5 - 4 * 0.21, 0.1)
-      grp.add(curMesh)
-
-      const floaters: Array<{ mesh: THREE.Mesh; lines: THREE.LineSegments; baseY: number; speed: number; phase: number }> = []
-        ;[
-          { x: 2.6, y: 1.0, z: -0.5, w: 1.4, h: 0.9, c: 0x9d4edd },
-          { x: -2.8, y: -0.4, z: -0.3, w: 1.2, h: 0.75, c: 0x00ffe0 },
-          { x: 2.4, y: -1.3, z: -0.6, w: 1.6, h: 0.7, c: 0xc8ff00 },
-        ].forEach((f) => {
-          const fg = new THREE.BoxGeometry(f.w, f.h, 0.05)
-          const fm = new THREE.MeshPhongMaterial({ color: 0x040f0a, emissive: 0x010804, transparent: true, opacity: 0.85 })
-          const fmesh = new THREE.Mesh(fg, fm)
-          fmesh.position.set(f.x, f.y, f.z)
-          const fe = new THREE.EdgesGeometry(fg)
-          const fem = new THREE.LineBasicMaterial({ color: f.c, transparent: true, opacity: 0.4 })
-          const flines = new THREE.LineSegments(fe, fem)
-          flines.position.copy(fmesh.position)
-          S.add(fmesh)
-          S.add(flines)
-          floaters.push({
-            mesh: fmesh,
-            lines: flines,
-            baseY: f.y,
-            speed: 0.3 + Math.random() * 0.4,
-            phase: Math.random() * Math.PI * 2,
-          })
-        })
-
-      const tokens: Array<{ mesh: THREE.Mesh; angle: number; r: number; speed: number; y: number }> = []
-      const tkColors = [0x00ff6a, 0x00ffe0, 0xc8ff00, 0x9d4edd, 0xff8800]
-      for (let i = 0; i < 12; i++) {
-        const tg = new THREE.BoxGeometry(0.2 + Math.random() * 0.3, 0.06, 0.06)
-        const tc = tkColors[i % tkColors.length]
-        const tm = new THREE.MeshPhongMaterial({ color: tc, emissive: tc, emissiveIntensity: 0.5, transparent: true, opacity: 0.7 })
-        const tmesh = new THREE.Mesh(tg, tm)
-        tokens.push({ mesh: tmesh, angle: i * (Math.PI * 2 / 12), r: 3.2 + Math.random() * 0.6, speed: 0.006 + Math.random() * 0.004, y: (Math.random() - 0.5) * 2.5 })
-        S.add(tmesh)
-      }
-
-      const light1 = new THREE.PointLight(0x00ff6a, 3, 15)
-      light1.position.set(2, 2, 4)
-      S.add(light1)
-      const light2 = new THREE.PointLight(0x00ffe0, 2, 12)
-      light2.position.set(-3, -1, 3)
-      S.add(light2)
-      const light3 = new THREE.PointLight(0x9d4edd, 1.5, 10)
-      light3.position.set(0, -3, 2)
-      S.add(light3)
-      S.add(new THREE.AmbientLight(0x020c08, 0.8))
-
-      let hmx = 0
-      let hmy = 0
-      let grpRX = 0
-      let grpRY = 0
-      const onMove = (e: MouseEvent) => {
-        hmx = (e.clientX / window.innerWidth - 0.5) * 1.2
-        hmy = (e.clientY / window.innerHeight - 0.5) * 0.8
-      }
-      document.addEventListener('mousemove', onMove)
-      cleanups.push(() => document.removeEventListener('mousemove', onMove))
-
-      const onResize = () => {
-        R.setSize(W(), H())
-        C.aspect = W() / H()
-        C.updateProjectionMatrix()
-      }
-      window.addEventListener('resize', onResize)
-      cleanups.push(() => window.removeEventListener('resize', onResize))
-
-      let raf = 0
-      const a = (t: number) => {
-        raf = requestAnimationFrame(a)
-        grpRY += (hmx - grpRY) * 0.035
-        grpRX += (hmy - grpRX) * 0.035
-        grp.rotation.y = grpRY
-        grp.rotation.x = -grpRX * 0.3
-        grp.position.y = Math.sin(t * 0.0007) * 0.12
-
-        curMesh.material.opacity = Math.sin(t * 0.004) > 0 ? 1 : 0
-
-        if (Math.floor(t * 0.002) % 2 === 0) {
-          const li = Math.floor(t * 0.001) % codeLines.length
-          codeLines[li].mesh.scale.x = 0.5 + Math.abs(Math.sin(t * 0.003)) * 0.7
-        }
-
-        floaters.forEach((f) => {
-          f.mesh.position.y = f.baseY + Math.sin(t * 0.001 * f.speed + f.phase) * 0.2
-          f.lines.position.y = f.mesh.position.y
-        })
-
-        tokens.forEach((tk) => {
-          tk.angle += tk.speed
-          tk.mesh.position.x = Math.cos(tk.angle) * tk.r
-          tk.mesh.position.y = tk.y + Math.sin(tk.angle * 0.7) * 0.3
-          tk.mesh.position.z = Math.sin(tk.angle) * tk.r * 0.4 - 1
-          tk.mesh.rotation.z = tk.angle * 0.3
-        })
-
         R.render(S, C)
       }
       a(0)
@@ -918,7 +1002,6 @@ function App() {
     }
 
     heroBg()
-    heroCode()
     aboutScene()
     skillsGalaxy()
     projectCanvases()
@@ -1037,499 +1120,708 @@ function App() {
           </div>
         </div>
       )}
+      {/* Background Ambient Canvas */}
+      <canvas
+        id="hero-bg-canvas"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          opacity: 0.65,
+        }}
+      />
 
       <nav id="nav">
-        <div className="nav-logo">
+        <button
+          type="button"
+          className="nav-logo"
+          onClick={() => navigateTo('home')}
+          onMouseEnter={() => sfx.playHoverTick(1100)}
+        >
           <span className="nav-logo-bracket">[</span>MP<span className="nav-logo-bracket">]</span>
-        </div>
+        </button>
+
         <div className="nav-links">
-          <a href="#about">about</a>
-          <a href="#skills">skills</a>
-          <a href="#projects">projects</a>
-          <a href="#experience">experience</a>
-          <a href="#contact">contact</a>
+          <button
+            type="button"
+            className={`nav-link-btn ${currentView === 'work' ? 'active' : ''}`}
+            onClick={() => navigateTo('work')}
+            onMouseEnter={() => sfx.playHoverTick(1100)}
+          >
+            work
+          </button>
+          <button
+            type="button"
+            className={`nav-link-btn ${currentView === 'about' ? 'active' : ''}`}
+            onClick={() => navigateTo('about')}
+            onMouseEnter={() => sfx.playHoverTick(1100)}
+          >
+            about
+          </button>
+          <button
+            type="button"
+            className={`nav-link-btn ${currentView === 'skills' ? 'active' : ''}`}
+            onClick={() => navigateTo('skills')}
+            onMouseEnter={() => sfx.playHoverTick(1100)}
+          >
+            skills
+          </button>
+          <button
+            type="button"
+            className={`nav-link-btn ${currentView === 'contact' ? 'active' : ''}`}
+            onClick={() => navigateTo('contact')}
+            onMouseEnter={() => sfx.playHoverTick(1100)}
+          >
+            contact
+          </button>
         </div>
+
         <a
           href="/Resume.pdf"
           download="Resume.pdf"
           className="nav-cta"
+          onMouseEnter={() => sfx.playHoverTick(1300)}
+          onClick={() => sfx.playSelectThud()}
         >
           resume ↗
         </a>
       </nav>
 
-      <section id="hero">
-        <canvas id="hero-bg-canvas" />
-        <div className="hero-left">
-          <div className="hero-eyebrow" id="he">
-            Full-Stack Developer
-          </div>
-          <div className="hero-name" id="hn">
-            MANPREET
-            <br />
-            <span className="line-g">SINGH</span>
-          </div>
-          <div className="hero-role-wrap">
-            <div className="hero-role" id="hr">
-              I build things for the <em>web</em>.
-            </div>
-          </div>
-          <p className="hero-desc" id="hd">
-            Crafting immersive full-stack experiences with React, Node.js &amp; MongoDB.
-            <br />
-            B.Tech CSE · Open Source Contributor · Available for hire.
-          </p>
-          <div className="hero-btns" id="hb">
-            <a href="#projects" className="hbtn fill">
-              View Projects
-            </a>
-            <a href="#contact" className="hbtn ghost">
-              Let's Talk
-            </a>
-          </div>
-          <div className="hero-badges" id="hbdg">
-            {['React', 'Node.js', 'MongoDB', 'Next.js', 'Tailwind', 'Three.js', 'GSAP'].map((b) => (
-              <span key={b} className="hbadge">
-                {b}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div className="hero-right">
-          <canvas id="hero-code-canvas" />
-        </div>
-        <div className="scroll-hint" id="shint">
-          <span>scroll</span>
-          <div className="sh-line" style={{ animation: 'shBob 2s infinite' }} />
-        </div>
-      </section>
-
-      <div className="mq-wrap">
-        <div className="mq-inner">
-          <div className="mq-row">
-            <div className="mq-track">
-              {[
-                { t: 'MANPREET SINGH', c: 'bright' },
-                { t: 'FULL STACK', c: 'dim' },
-                { t: 'const dev = "manpreet"', c: 'code' },
-                { t: 'REACT', c: 'bright' },
-                { t: 'NODE.JS', c: 'dim' },
-                { t: 'npm run build', c: 'code' },
-                { t: 'MONGODB', c: 'bright' },
-                { t: 'OPEN SOURCE', c: 'dim' },
-                { t: 'MANPREET SINGH', c: 'bright' },
-                { t: 'FULL STACK', c: 'dim' },
-                { t: 'const dev = "manpreet"', c: 'code' },
-                { t: 'REACT', c: 'bright' },
-                { t: 'NODE.JS', c: 'dim' },
-                { t: 'npm run build', c: 'code' },
-                { t: 'MONGODB', c: 'bright' },
-                { t: 'OPEN SOURCE', c: 'dim' },
-              ].map((x, idx) => (
-                <span key={idx} className={`mq-item ${x.c}`}>
-                  {x.t}
-                  <span className="mq-sep" />
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="mq-row">
-            <div className="mq-track">
-              {[
-                { t: 'git commit -m "ship it"', c: 'code' },
-                { t: 'NEXT.JS', c: 'dim' },
-                { t: 'AVAILABLE FOR HIRE', c: 'bright' },
-                { t: '() => <Portfolio />', c: 'code' },
-                { t: 'TAILWIND CSS', c: 'dim' },
-                { t: 'B.TECH CSE', c: 'bright' },
-                { t: 'git push origin main', c: 'code' },
-                { t: 'THREE.JS', c: 'dim' },
-                { t: 'git commit -m "ship it"', c: 'code' },
-                { t: 'NEXT.JS', c: 'dim' },
-                { t: 'AVAILABLE FOR HIRE', c: 'bright' },
-                { t: '() => <Portfolio />', c: 'code' },
-                { t: 'TAILWIND CSS', c: 'dim' },
-                { t: 'B.TECH CSE', c: 'bright' },
-                { t: 'git push origin main', c: 'code' },
-                { t: 'THREE.JS', c: 'dim' },
-              ].map((x, idx) => (
-                <span key={idx} className={`mq-item ${x.c}`}>
-                  {x.t}
-                  <span className="mq-sep" />
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="mq-row">
-            <div className="mq-track">
-              {[
-                { t: '600+ COMMITS', c: 'bright' },
-                { t: 'async/await fetchData()', c: 'code' },
-                { t: 'MERN STACK', c: 'dim' },
-                { t: '4 LIVE PROJECTS', c: 'bright' },
-                { t: 'useEffect(() => {}, [])', c: 'code' },
-                { t: 'REST APIs', c: 'dim' },
-                { t: '600+ COMMITS', c: 'bright' },
-                { t: 'async/await fetchData()', c: 'code' },
-                { t: 'MERN STACK', c: 'dim' },
-                { t: '4 LIVE PROJECTS', c: 'bright' },
-                { t: 'useEffect(() => {}, [])', c: 'code' },
-                { t: 'REST APIs', c: 'dim' },
-              ].map((x, idx) => (
-                <span key={idx} className={`mq-item ${x.c}`}>
-                  {x.t}
-                  <span className="mq-sep" />
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <section id="about">
-        <div className="about-code-side">
-          <canvas id="about-canvas" />
-        </div>
-        <div className="about-txt" id="about-txt">
-          <div className="eyebrow">About Me</div>
-          <div className="about-h">
-            CODE.<br />
-            CREATE.<br />
-            SHIP.
-          </div>
-          <p className="about-body">
-            Hey, I'm <strong>Manpreet Singh</strong> — a full-stack developer who treats every project like a craft.
-            <br />
-            <br />I specialise in the <code>MERN</code> stack and love pushing the web's creative limits using{' '}
-            <code>Three.js</code>, <code>GSAP</code>, and WebGL. Currently pursuing B.Tech CSE with <strong>600+</strong>{' '}
-            GitHub commits and <strong>4</strong> live production apps.
-            <br />
-            <br />
-            When I'm not writing code I'm reading about it.
-          </p>
-          <div className="stats">
-            <div>
-              <span className="stat-n" data-count="4">
-                0
-              </span>
-              <span className="stat-l">Live Apps</span>
-            </div>
-            <div>
-              <span className="stat-n" data-count="600">
-                0
-              </span>
-              <span className="stat-l">Commits</span>
-            </div>
-            <div>
-              <span className="stat-n" data-count="4">
-                0
-              </span>
-              <span className="stat-l">Yrs Coding</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="skills">
-        <div className="eyebrow">Technical Arsenal</div>
-        <div className="skills-h">
-          MY <span className="dim">SKILLS</span>
-        </div>
-        <div className="skills-intro">
-          <div className="skills-intro-main">MERN + MODERN WEB TOOLING</div>
-          <div className="skills-intro-sub">building full-stack products with performance, UX, and scale in mind</div>
-        </div>
-        <div className="skills-grid">
-          {[
-            { name: 'React / Next.js', pct: 90, bg: 'linear-gradient(90deg,#0066ff,var(--cyan))', icon: '⚛️' },
-            { name: 'Node.js / Express', pct: 85, bg: 'linear-gradient(90deg,var(--g3),var(--g1))', icon: '🟢' },
-            { name: 'MongoDB', pct: 82, bg: 'linear-gradient(90deg,var(--g2),var(--lime))', icon: '🍃' },
-            { name: 'JavaScript / TypeScript', pct: 88, bg: 'linear-gradient(90deg,#f7df1e,var(--lime))', icon: '🟨' },
-            { name: 'Tailwind CSS', pct: 92, bg: 'linear-gradient(90deg,var(--cyan),#0066ff)', icon: '🎨' },
-            { name: 'Three.js / WebGL', pct: 70, bg: 'linear-gradient(90deg,var(--purple),var(--cyan))', icon: '🧊' },
-            { name: 'Git & GitHub', pct: 87, bg: 'linear-gradient(90deg,#f05032,var(--orange))', icon: '🌿' },
-            { name: 'Python / DSA', pct: 78, bg: 'linear-gradient(90deg,#3572A5,var(--cyan))', icon: '🐍' },
-          ].map((s) => (
-            <div className="sk-card" key={s.name}>
-              <div className="sk-top">
-                <span className="sk-name">
-                  <span className="sk-icon">{s.icon}</span> {s.name}
-                </span>
-                <span className="sk-pct">{s.pct}%</span>
-              </div>
-              <div className="sk-track">
-                <div className="sk-fill" data-p={String(s.pct)} style={{ background: s.bg }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="skills-pills">
-          {['REST APIs', 'Auth Systems', 'Realtime Features', 'Responsive UI', 'Deployment', 'Testing'].map((pill) => (
-            <span key={pill} className="skills-pill">
-              {pill}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section id="projects">
-        <div className="proj-hdr">
-          <div>
-            <div className="eyebrow">Selected Work</div>
-            <div className="proj-ht">
-              RECENT
-              <br />
-              <span className="dim">PROJECTS</span>
-            </div>
-          </div>
-          <div className="proj-meta">{String(projects.length).padStart(2, '0')} PROJECTS</div>
-        </div>
-
-        <div className="proj-mq">
-          <div className="proj-mq-inner">
-            <div className="proj-strip">
-              <div className="proj-strip-track">
-                {[...projects, ...projects].map((p, idx) => (
-                  <a key={`t1-${idx}`} className="pslide" href={p.link} target="_blank" rel="noreferrer">
-                    <div className="pslide-img-wrap">
-                      {p.img ? (
-                        <img className="pslide-img" src={p.img} alt={p.title} loading="lazy" />
-                      ) : (
-                        <div className="pslide-img pcard-img-fallback">COMING SOON</div>
-                      )}
+      <main className="app-stage-container">
+        <AnimatePresence mode="wait" custom={direction}>
+          {/* =========================================================================
+              STAGE 1: HOME (Focused, Punchy, Interactive Portals)
+              ========================================================================= */}
+          {currentView === 'home' && (
+            <motion.div
+              key="home"
+              custom={direction}
+              variants={stageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="stage-wrapper"
+            >
+              <section id="hero" style={{ minHeight: 'calc(100vh - 5rem)', borderBottom: 'none' }}>
+                <div className="hero-left">
+                  <div className="hero-eyebrow" id="he">
+                    Full-Stack Developer &amp; Systems Architect
+                  </div>
+                  <div className="hero-name" id="hn">
+                    MANPREET
+                    <br />
+                    <span className="line-g">SINGH</span>
+                  </div>
+                  <div className="hero-role-wrap">
+                    <div className="hero-role" id="hr">
+                      Building production web architectures &amp; native systems.
                     </div>
-                    <div className="pslide-foot">
-                      <div className="pslide-tag">{p.tag}</div>
-                      <div className="pslide-ttl">{p.title}</div>
+                  </div>
+                  <p className="hero-desc" id="hd">
+                    Crafting scalable cloud platforms, MERN applications, and adaptive edge AI systems.
+                    <br />
+                    B.Tech CSE · Open Source Contributor · Available for high-impact roles.
+                  </p>
+                  <div className="hero-btns" id="hb">
+                    <button
+                      type="button"
+                      className="hbtn fill"
+                      onClick={() => navigateTo('work')}
+                      onMouseEnter={() => sfx.playHoverTick(1200)}
+                    >
+                      Explore Projects [09] <span>→</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="hbtn ghost"
+                      onClick={() => navigateTo('contact')}
+                      onMouseEnter={() => sfx.playHoverTick(1200)}
+                    >
+                      Initiate Contact
+                    </button>
+                  </div>
+                  <div className="hero-badges" id="hbdg">
+                    {['React 19', 'Node.js', 'Kotlin', 'MongoDB Atlas', 'PostgreSQL', 'Three.js', 'LLaMA C++'].map((b) => (
+                      <span key={b} className="hbadge">
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <HeroCode3D />
+              </section>
+
+              {/* Interactive Sector Portals (Clickable Stages) */}
+              <div className="home-portals-container">
+                <div className="eyebrow" style={{ marginBottom: '0.5rem' }}>Interactive Disciplines</div>
+                <h2 style={{ fontFamily: 'var(--display)', fontSize: '2.5rem', margin: '0 0 1.5rem', color: '#fff' }}>
+                  EXPLORE THE PORTFOLIO
+                </h2>
+                <div className="home-portals-grid">
+                  <div
+                    className="portal-card"
+                    onClick={() => navigateTo('work')}
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                  >
+                    <div>
+                      <div className="portal-card-num">[ 01 // SELECTED WORK ]</div>
+                      <div className="portal-card-title">Production Projects</div>
+                      <div className="portal-card-desc">
+                        Explore DentalOS, SecureShare, CallHelper, Dynamic Edge AI and 5 more verified applications.
+                      </div>
                     </div>
-                  </a>
+                    <div className="portal-card-action">
+                      OPEN WORKSPACE <span>→</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="portal-card"
+                    onClick={() => navigateTo('about')}
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                  >
+                    <div>
+                      <div className="portal-card-num">[ 02 // DEVELOPER JOURNEY ]</div>
+                      <div className="portal-card-title">Engineering Story</div>
+                      <div className="portal-card-desc">
+                        Career milestones, computer science foundation, and development principles.
+                      </div>
+                    </div>
+                    <div className="portal-card-action">
+                      READ PROFILE <span>→</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="portal-card"
+                    onClick={() => navigateTo('skills')}
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                  >
+                    <div>
+                      <div className="portal-card-num">[ 03 // SYSTEMS MATRIX ]</div>
+                      <div className="portal-card-title">Skills &amp; Capabilities</div>
+                      <div className="portal-card-desc">
+                        Deep dive into full-stack frontend, backend APIs, cloud databases, and on-device AI.
+                      </div>
+                    </div>
+                    <div className="portal-card-action">
+                      VIEW CAPABILITIES <span>→</span>
+                    </div>
+                  </div>
+
+                  <div
+                    className="portal-card"
+                    onClick={() => navigateTo('contact')}
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                  >
+                    <div>
+                      <div className="portal-card-num">[ 04 // DIRECT CONTACT ]</div>
+                      <div className="portal-card-title">Get in Touch</div>
+                      <div className="portal-card-desc">
+                        Direct channels via Email, LinkedIn, GitHub, or terminal message dispatch.
+                      </div>
+                    </div>
+                    <div className="portal-card-action">
+                      REACH OUT <span>→</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* =========================================================================
+              STAGE 2: WORK (Interactive Projects Gallery)
+              ========================================================================= */}
+          {currentView === 'work' && (
+            <motion.div
+              key="work"
+              custom={direction}
+              variants={stageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="stage-wrapper"
+              style={{ paddingBottom: '5rem' }}
+            >
+              <div className="proj-hdr" style={{ paddingTop: '2.5rem' }}>
+                <div>
+                  <div className="eyebrow">Portfolio Showcase</div>
+                  <div className="proj-ht">
+                    FEATURED <span className="line-g">PROJECTS</span>
+                  </div>
+                </div>
+                <div className="proj-meta">{String(projects.length).padStart(2, '0')} VERIFIED BUILDS</div>
+              </div>
+
+              <div className="proj-filters">
+                {[
+                  { id: 'all', label: `All Projects (${projects.length})` },
+                  { id: 'web', label: 'Full-Stack & SaaS' },
+                  { id: 'mobile', label: 'Android Apps' },
+                  { id: 'tools', label: 'Tools & Extensions' },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    className={`proj-filter-btn ${activeCategory === f.id ? 'active' : ''}`}
+                    onClick={() => {
+                      sfx.playSelectThud()
+                      setActiveCategory(f.id as any)
+                    }}
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                  >
+                    {f.label}
+                  </button>
                 ))}
               </div>
-            </div>
-            <div className="proj-strip">
-              <div className="proj-strip-track">
-                {[...projects, ...projects]
-                  .slice()
-                  .reverse()
-                  .map((p, idx) => (
-                    <a key={`t2-${idx}`} className="pslide" href={p.link} target="_blank" rel="noreferrer">
-                      <div className="pslide-img-wrap">
-                        {p.img ? (
-                          <img className="pslide-img" src={p.img} alt={p.title} loading="lazy" />
-                        ) : (
-                          <div className="pslide-img pcard-img-fallback">COMING SOON</div>
-                        )}
-                      </div>
-                      <div className="pslide-foot">
-                        <div className="pslide-tag">{p.tag}</div>
-                        <div className="pslide-ttl">{p.title}</div>
-                      </div>
-                    </a>
-                  ))}
+
+              <div className="proj-grid">
+                {projects
+                  .filter((p) => activeCategory === 'all' || p.category === activeCategory)
+                  .map((project, index) => {
+                    const cardNumber = String(index + 1).padStart(2, '0')
+                    const mailtoBody = encodeURIComponent(
+                      `Hi Manpreet,\n\nI would love to request a private code walkthrough for "${project.title}".\n\nBest regards,\n`
+                    )
+                    const mailtoUrl = `mailto:manpreet.singhcomet@gmail.com?subject=Code%20Access%20Request%20-%20${encodeURIComponent(project.title)}&body=${mailtoBody}`
+
+                    return (
+                      <motion.div
+                        className="pcard"
+                        id={`pfc${index + 1}`}
+                        key={project.title}
+                        layout
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, delay: index * 0.05 }}
+                        onMouseEnter={() => sfx.playHoverTick(900)}
+                      >
+                        <div
+                          className="pcard-vis"
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => {
+                            sfx.playSelectThud()
+                            setSelectedShowroomProject(project as any)
+                          }}
+                          title="Click to enter 3D Inspect Mode"
+                        >
+                          {project.img ? (
+                            <img className="pcard-img" src={project.img} alt={project.title} loading="lazy" />
+                          ) : (
+                            <div className="pcard-img pcard-img-fallback">COMING SOON</div>
+                          )}
+                          {project.badge && <span className="pcard-badge">{project.badge}</span>}
+                          <div className="pcard-num">{cardNumber}</div>
+                        </div>
+                        <div className="pcard-body">
+                          <div className="pcard-tag">{project.tag}</div>
+                          <div
+                            className="pcard-ttl"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => {
+                              sfx.playSelectThud()
+                              setSelectedShowroomProject(project as any)
+                            }}
+                          >
+                            {project.title}
+                          </div>
+                          <div className="pcard-desc">{project.desc}</div>
+                          <div className="pcard-stack">
+                            {project.stack.map((c) => (
+                              <span key={c} className="chip">
+                                {c}
+                              </span>
+                            ))}
+                          </div>
+
+                          {/* Inspect Modal Trigger */}
+                          <button
+                            type="button"
+                            className="pcard-inspect-trigger"
+                            onClick={() => {
+                              sfx.playSelectThud()
+                              setSelectedShowroomProject(project as any)
+                            }}
+                            onMouseEnter={() => sfx.playHoverTick(1200)}
+                          >
+                            <span>⚡</span> INSPECT SPECS &amp; ARCHITECTURE ↗
+                          </button>
+
+                          <div className="pcard-actions">
+                            {project.isMobileShot ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}>
+                                <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', letterSpacing: '1px', color: 'var(--cyan)' }}>
+                                  📱 Android Native
+                                </span>
+                                {project.isPrivate ? (
+                                  <a
+                                    href={mailtoUrl}
+                                    className="pcard-btn-sec"
+                                    style={{ color: '#ffaa00', borderColor: 'rgba(255,170,0,0.35)' }}
+                                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                                    onClick={() => sfx.playSelectThud()}
+                                    title="Request private demo walkthrough"
+                                  >
+                                    🔒 Code on Request
+                                  </a>
+                                ) : (
+                                  <a
+                                    href={project.github || project.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="pcard-btn-sec"
+                                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                                  >
+                                    GitHub Repo ↗
+                                  </a>
+                                )}
+                              </div>
+                            ) : (
+                              <>
+                                {project.link && !project.link.includes('github.com') ? (
+                                  <a
+                                    href={project.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="pcard-link"
+                                    onMouseEnter={() => sfx.playHoverTick(1200)}
+                                    onClick={() => sfx.playSelectThud()}
+                                  >
+                                    Live Demo →
+                                  </a>
+                                ) : null}
+                                {project.isPrivate ? (
+                                  <a
+                                    href={mailtoUrl}
+                                    className="pcard-btn-sec"
+                                    style={{ color: '#ffaa00', borderColor: 'rgba(255,170,0,0.35)' }}
+                                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                                    onClick={() => sfx.playSelectThud()}
+                                    title="Request private code review"
+                                  >
+                                    🔒 Code on Request
+                                  </a>
+                                ) : project.github ? (
+                                  <a
+                                    href={project.github}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="pcard-btn-sec"
+                                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                                  >
+                                    Source Code ↗
+                                  </a>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )
+                  })}
               </div>
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          )}
 
-        <div className="proj-filters">
-          {[
-            { id: 'all', label: `All Projects (${projects.length})` },
-            { id: 'web', label: 'Full-Stack & SaaS' },
-            { id: 'mobile', label: 'Android Apps' },
-            { id: 'tools', label: 'Tools & Extensions' },
-          ].map((f) => (
-            <button
-              key={f.id}
-              className={`proj-filter-btn ${activeCategory === f.id ? 'active' : ''}`}
-              onClick={() => setActiveCategory(f.id as any)}
+          {/* =========================================================================
+              STAGE 3: ABOUT (Developer Story & Milestones)
+              ========================================================================= */}
+          {currentView === 'about' && (
+            <motion.div
+              key="about"
+              custom={direction}
+              variants={stageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="stage-wrapper"
+              style={{ paddingBottom: '5rem' }}
             >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="proj-grid">
-          {projects
-            .filter((p) => activeCategory === 'all' || p.category === activeCategory)
-            .map((project, index) => {
-              const cardNumber = String(index + 1).padStart(2, '0')
-
-              return (
-                <motion.div
-                  className="pcard"
-                  id={`pfc${index + 1}`}
-                  key={project.title}
-                  layout
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, delay: index * 0.05 }}
-                >
-                  <div className="pcard-vis">
-                    {project.img ? (
-                      <img className="pcard-img" src={project.img} alt={project.title} loading="lazy" />
-                    ) : (
-                      <div className="pcard-img pcard-img-fallback">COMING SOON</div>
-                    )}
-                    {project.badge && <span className="pcard-badge">{project.badge}</span>}
-                    <div className="pcard-num">{cardNumber}</div>
+              <section id="about" style={{ paddingTop: '2.5rem' }}>
+                <div className="about-text" id="about-txt">
+                  <div className="eyebrow">Background &amp; Philosophy</div>
+                  <h1 className="about-h">
+                    ENGINEERING
+                    <br />
+                    <span className="line-g">RELIABILITY</span>
+                  </h1>
+                  <p className="about-p">
+                    I'm <strong>Manpreet Singh</strong>, a Full-Stack Developer &amp; Systems Engineer focused on creating reliable, scalable digital products.
+                  </p>
+                  <p className="about-p">
+                    My work spans end-to-end cloud architectures (React, Node.js, MongoDB Atlas, Neon Postgres) to Android system services and on-device edge AI routing.
+                  </p>
+                  <div className="about-facts">
+                    {[
+                      { l: 'Location', v: 'India (Open to Remote / Relocation)' },
+                      { l: 'Degree', v: 'B.Tech Computer Science & Eng. (2025)' },
+                      { l: 'Focus', v: 'Full-Stack Architecture & Edge Systems' },
+                      { l: 'Status', v: 'Available for Hire' },
+                    ].map((f) => (
+                      <div key={f.l} className="fact">
+                        <div className="fact-k">{f.l}</div>
+                        <div className="fact-v">{f.v}</div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="pcard-body">
-                    <div className="pcard-tag">{project.tag}</div>
-                    <div className="pcard-ttl">{project.title}</div>
-                    <div className="pcard-desc">{project.desc}</div>
-                    <div className="pcard-stack">
-                      {project.stack.map((c) => (
-                        <span key={c} className="chip">
-                          {c}
-                        </span>
-                      ))}
+
+                  <div className="hero-btns" style={{ marginTop: '2.5rem' }}>
+                    <button
+                      type="button"
+                      className="hbtn fill"
+                      onClick={() => navigateTo('work')}
+                      onMouseEnter={() => sfx.playHoverTick(1100)}
+                    >
+                      View Projects <span>→</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="hbtn ghost"
+                      onClick={() => navigateTo('contact')}
+                      onMouseEnter={() => sfx.playHoverTick(1100)}
+                    >
+                      Contact Me
+                    </button>
+                  </div>
+                </div>
+
+                <div className="about-code-side">
+                  <div className="exp-h" style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>
+                    CAREER <span style={{ WebkitTextStroke: '1px rgba(0,255,106,.25)', color: 'transparent' }}>MILESTONES</span>
+                  </div>
+                  <div className="tl">
+                    <div className="tli" id="ti1">
+                      <div className="tli-dot" />
+                      <div className="tli-p">2024 — Present</div>
+                      <div className="tli-r">Full-Stack &amp; Systems Developer</div>
+                      <div className="tli-org">Freelance &amp; Open Source · Remote</div>
+                      <div className="tli-d">
+                        Architected and shipped production SaaS platforms (DentalOS, SecureShare) and Android native telephony tools.
+                      </div>
+                      <div className="tli-tags">
+                        {['React 19', 'Node.js', 'PostgreSQL', 'Kotlin', 'Edge AI'].map((t) => (
+                          <span key={t} className="tli-tag">
+                            {t}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="pcard-actions">
-                      {project.isMobileShot ? (
-                        <>
-                          <a href={project.github || project.link} target="_blank" rel="noreferrer" className="pcard-link">
-                            GitHub Repo ↗
-                          </a>
-                          {project.apkLink && (
-                            <a href={project.apkLink} target="_blank" rel="noreferrer" className="pcard-btn-sec">
-                              Download APK ⤓
-                            </a>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <a href={project.link} target="_blank" rel="noreferrer" className="pcard-link">
-                            Live Demo →
-                          </a>
-                          {project.github && (
-                            <a href={project.github} target="_blank" rel="noreferrer" className="pcard-btn-sec">
-                              Source Code ↗
-                            </a>
-                          )}
-                        </>
-                      )}
+
+                    <div className="tli" id="ti2">
+                      <div className="tli-dot" />
+                      <div className="tli-p">2023 — 2024</div>
+                      <div className="tli-r">Open-Source Contributor</div>
+                      <div className="tli-org">Developer Communities</div>
+                      <div className="tli-d">
+                        Contributed to developer tools, REST API optimizations, and Chrome productivity extensions.
+                      </div>
+                    </div>
+
+                    <div className="tli" id="ti3">
+                      <div className="tli-dot" />
+                      <div className="tli-p">2021 — 2025</div>
+                      <div className="tli-r">B.Tech Computer Science &amp; Engineering</div>
+                      <div className="tli-org">University Program</div>
+                      <div className="tli-d">
+                        Core focus on Data Structures, Distributed Systems, Operating Systems, and Cryptography.
+                      </div>
                     </div>
                   </div>
-                </motion.div>
-              )
-            })}
-        </div>
-      </section>
+                </div>
+              </section>
+            </motion.div>
+          )}
 
-      <section id="experience">
-        <div className="eyebrow">Career &amp; Education</div>
-        <div className="exp-h">
-          EXPERI
-          <span style={{ WebkitTextStroke: '1px rgba(0,255,106,.25)', color: 'transparent' }}>ENCE</span>
-        </div>
-        <div className="tl">
-          <div className="tli" id="ti1">
-            <div className="tli-dot" />
-            <div className="tli-p">2024 — Present</div>
-            <div className="tli-r">Full-Stack Developer</div>
-            <div className="tli-org">Freelance / Personal Projects · Remote</div>
-            <div className="tli-d">
-              Built and deployed 4 production MERN apps serving real users. Auth systems, REST APIs, real-time features, Vercel &amp; Render
-              deployments.
-            </div>
-            <div className="tli-tags">
-              {['React', 'Node.js', 'MongoDB', 'Vercel'].map((t) => (
-                <span key={t} className="tli-tag">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
+          {/* =========================================================================
+              STAGE 4: SKILLS (Systems & Stack Matrix)
+              ========================================================================= */}
+          {currentView === 'skills' && (
+            <motion.div
+              key="skills"
+              custom={direction}
+              variants={stageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="stage-wrapper"
+              style={{ paddingBottom: '5rem' }}
+            >
+              <section id="skills" style={{ paddingTop: '2.5rem' }}>
+                <div className="eyebrow">Technical Competencies</div>
+                <div className="skills-h">
+                  STACK &amp; <span className="line-g">SYSTEMS</span>
+                </div>
+                <div className="sk-grid">
+                  {[
+                    {
+                      cat: 'Frontend Architecture',
+                      items: 'React 19, TypeScript, Next.js, Vite, Tailwind CSS, Three.js, GSAP, HTML5/CSS3',
+                      pct: 92,
+                      bg: 'linear-gradient(90deg, #00ff6a, #00f0ff)',
+                    },
+                    {
+                      cat: 'Backend & Cloud',
+                      items: 'Node.js, Express, MongoDB Atlas, Neon PostgreSQL, Supabase S3, REST APIs, JWT, Cloudinary',
+                      pct: 88,
+                      bg: 'linear-gradient(90deg, #00ff6a, #2aff88)',
+                    },
+                    {
+                      cat: 'Android & Systems Engineering',
+                      items: 'Kotlin, Android SDK, Android Telecom API, Bluetooth SCO, Foreground Services, Background Audio',
+                      pct: 84,
+                      bg: 'linear-gradient(90deg, #2aff88, #00e5ff)',
+                    },
+                    {
+                      cat: 'Edge AI & Tooling',
+                      items: 'LLaMA C++ (GGUF Quantization), Gemini API, Git/GitHub, Linux/Bash, Chrome Extension API',
+                      pct: 80,
+                      bg: 'linear-gradient(90deg, #00e5ff, #00ff6a)',
+                    },
+                  ].map((s) => (
+                    <div key={s.cat} className="sk-card">
+                      <div className="sk-cat">{s.cat}</div>
+                      <div className="sk-items">{s.items}</div>
+                      <div className="sk-bar-row">
+                        <span className="sk-pct">{s.pct}%</span>
+                      </div>
+                      <div className="sk-track">
+                        <div className="sk-fill" style={{ width: `${s.pct}%`, background: s.bg }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="skills-pills">
+                  {['REST APIs', 'Auth Systems', 'Realtime Features', 'Responsive UI', 'Deployment', 'Testing', 'Edge AI', 'HIPAA/E2EE Security'].map((pill) => (
+                    <span key={pill} className="skills-pill">
+                      {pill}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            </motion.div>
+          )}
+          {/* =========================================================================
+              STAGE 5: CONTACT (Magnetic Inversion Rows & Terminal Dispatch)
+              ========================================================================= */}
+          {currentView === 'contact' && (
+            <motion.div
+              key="contact"
+              custom={direction}
+              variants={stageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="stage-wrapper"
+              style={{ paddingBottom: '5rem' }}
+            >
+              <div className="contact-stage-wrap">
+                <div className="eyebrow" style={{ paddingTop: '2.5rem' }}>Direct Dispatch</div>
+                <h1 style={{ fontFamily: 'var(--display)', fontSize: 'clamp(3rem, 7vw, 6.5rem)', lineHeight: 0.95, margin: '0.4rem 0 1.2rem', color: '#fff' }}>
+                  LET'S START A<br />
+                  <span style={{ WebkitTextStroke: '1px var(--g1)', color: 'transparent' }}>CONVERSATION</span>
+                </h1>
+                <p style={{ color: 'var(--muted2)', fontSize: '15px', maxWidth: '600px', lineHeight: 1.6, margin: '0 0 2rem' }}>
+                  Available for Full-Stack Engineering, Android Native, and Edge AI roles. Hover over any channel below to connect directly:
+                </p>
 
-          <div className="tli" id="ti2">
-            <div className="tli-dot" />
-            <div className="tli-p">2023</div>
-            <div className="tli-r">Open Source Contributor</div>
-            <div className="tli-org">GitHub Community</div>
-            <div className="tli-d">
-              600+ commits across personal and open-source repos. Active in hackathons and coding challenges on LeetCode and Codeforces.
-            </div>
-            <div className="tli-tags">
-              {['Git', 'JavaScript', 'DSA'].map((t) => (
-                <span key={t} className="tli-tag">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
+                {/* Magnetic Inversion Rows (Utsav-inspired) */}
+                <div className="contact-magnetic-list">
+                  <a
+                    href="mailto:manpreet.singhcomet@gmail.com"
+                    className="contact-row"
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                    onClick={() => sfx.playSelectThud()}
+                  >
+                    <span className="contact-row-channel">Email</span>
+                    <span className="contact-row-detail">
+                      manpreet.singhcomet@gmail.com <span>↗</span>
+                    </span>
+                  </a>
 
-          <div className="tli" id="ti3">
-            <div className="tli-dot" />
-            <div className="tli-p">2022 — Present</div>
-            <div className="tli-r">B.Tech Computer Science</div>
-            <div className="tli-org">University · Full Time</div>
-            <div className="tli-d">
-              Core CS — algorithms, OS, DBMS, networks. Applying concepts through full-stack projects and research. Active campus tech community
-              member.
-            </div>
-            <div className="tli-tags">
-              {['DSA', 'DBMS', 'OS', 'Networks'].map((t) => (
-                <span key={t} className="tli-tag">
-                  {t}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+                  <a
+                    href="https://www.linkedin.com/in/manpreetsingh2004"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="contact-row"
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                    onClick={() => sfx.playSelectThud()}
+                  >
+                    <span className="contact-row-channel">LinkedIn</span>
+                    <span className="contact-row-detail">
+                      linkedin.com/in/manpreetsingh2004 <span>↗</span>
+                    </span>
+                  </a>
 
-      <section id="contact">
-        <canvas id="contact-canvas" />
-        <div className="contact-wrap">
-          <div className="contact-left">
-            <div className="eyebrow">Get In Touch</div>
-            <div className="contact-h">
-              LET'S
-              <br />
-              BUILD.
-            </div>
-            <p className="contact-sub">Open to internships, freelance, and full-time roles. If you have an idea — let's make it real.</p>
-            <a href="mailto:manpreet.singhcomet@gmail.com" className="contact-em">
-              manpreet.singhcomet@gmail.com
-            </a>
-            <br />
-            <div className="socials">
-              <a href="https://github.com/mpsinghji" target="_blank" rel="noreferrer" className="soc">
-                GitHub
-              </a>
-              <a href="https://www.linkedin.com/in/manpreetsingh2004" target="_blank" rel="noreferrer" className="soc">
-                LinkedIn
-              </a>
-              <a
-                href="/Resume.pdf"
-                download="Resume.pdf"
-                className="soc"
-              >
-                Resume ↗
-              </a>
-            </div>
-          </div>
-          <div className="contact-right">
-            <div className="cf-ttl">DROP A MESSAGE</div>
-            <div className="cf">
-              <input className="cf-in" id="cf-name" placeholder="Your Name" />
-              <input className="cf-in" id="cf-email" placeholder="Your Email" />
-              <textarea className="cf-in" id="cf-msg" rows={4} placeholder="Your Message" />
-              <button className="cf-btn" id="cf-send" onClick={onSendMessage} type="button">
-                Send Message →
-              </button>
-              <div className="cf-fb" id="cf-fb" />
-            </div>
-          </div>
-        </div>
-      </section>
+                  <a
+                    href="https://github.com/mpsinghji"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="contact-row"
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                    onClick={() => sfx.playSelectThud()}
+                  >
+                    <span className="contact-row-channel">GitHub</span>
+                    <span className="contact-row-detail">
+                      github.com/mpsinghji <span>↗</span>
+                    </span>
+                  </a>
+
+                  <a
+                    href="/Resume.pdf"
+                    download="Resume.pdf"
+                    className="contact-row"
+                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                    onClick={() => sfx.playSelectThud()}
+                  >
+                    <span className="contact-row-channel">Resume</span>
+                    <span className="contact-row-detail">
+                      Download PDF <span>⤓</span>
+                    </span>
+                  </a>
+                </div>
+
+                {/* Direct Message Form */}
+                <div className="contact-wrap" style={{ padding: 0, marginTop: '2.5rem' }}>
+                  <div className="contact-left">
+                    <div className="contact-h" style={{ fontSize: 'clamp(2rem, 4vw, 3.5rem)' }}>
+                      DROP A<br /><span className="g">DIRECT MESSAGE</span>
+                    </div>
+                    <p style={{ color: 'var(--muted2)', fontSize: '14px', lineHeight: 1.6 }}>
+                      Send an encrypted inquiry directly from this terminal. Your message will be dispatched immediately.
+                    </p>
+                  </div>
+                  <div className="contact-right">
+                    <div className="cf-ttl">QUICK TERMINAL</div>
+                    <div className="cf">
+                      <input className="cf-in" id="cf-name" placeholder="Your Name" />
+                      <input className="cf-in" id="cf-email" placeholder="Your Email" />
+                      <textarea className="cf-in" id="cf-msg" rows={4} placeholder="Your Message" />
+                      <button className="cf-btn" id="cf-send" onClick={onSendMessage} type="button">
+                        Send Message →
+                      </button>
+                      <div className="cf-fb" id="cf-fb" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
 
       <footer>
         <div className="ft-logo">[MP.DEV]</div>
         <div className="ft-copy">Designed &amp; built by Manpreet Singh · © 2025</div>
       </footer>
+
+      {/* 3D Full-Screen Project Inspect Showroom */}
+      <ProjectShowroomModal
+        project={selectedShowroomProject}
+        allProjects={projects as any}
+        onClose={() => setSelectedShowroomProject(null)}
+        onSelectProject={(p) => setSelectedShowroomProject(p)}
+      />
     </>
   )
 }
