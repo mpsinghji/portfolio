@@ -1,18 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { TextPlugin } from 'gsap/TextPlugin'
 import * as THREE from 'three'
 import emailjs from '@emailjs/browser'
 
+import callHelperMockup from './assets/callhelper_real_mockup.jpg'
+import dynamicEdgeMockup from './assets/dynamicedge_real_mockup.jpg'
+import blogVerseImg from './assets/BlogVerse.png'
+import campusSyncImg from './assets/CampusSync.png'
+import jobHuntImg from './assets/JobPortal.png'
+import fileForgeImg from './assets/FileForge.png'
+import speedControlImg from './assets/SpeedControl.png'
+
 gsap.registerPlugin(ScrollTrigger, TextPlugin)
 
 type Project = {
   title: string
   link: string
+  github?: string
+  apkLink?: string
   img: string | null
   tag: string
+  badge: string
+  category: 'all' | 'web' | 'mobile' | 'tools'
   desc: string
   stack: string[]
   isMobileShot?: boolean
@@ -21,58 +33,113 @@ type Project = {
 function App() {
   const [isLoading, setIsLoading] = useState(true)
   const loaderRef = useRef<HTMLDivElement | null>(null)
-  const [showAllProjects, setShowAllProjects] = useState(false)
+  const [activeCategory, setActiveCategory] = useState<'all' | 'web' | 'mobile' | 'tools'>('all')
 
   const projects = useMemo<Project[]>(
     () => [
       {
+        title: 'DentalOS',
+        link: 'https://github.com/mpsinghji/DentalOS',
+        github: 'https://github.com/mpsinghji/DentalOS',
+        img: 'https://i.postimg.cc/Y0hJ7qYB/dental-OS.png',
+        tag: 'Clinic SaaS / Healthcare',
+        badge: 'Full-Stack SaaS',
+        category: 'web',
+        desc: 'Cloud clinic management system with digital prescriptions, IP-lockout security, appointment scheduling, and patient records.',
+        stack: ['React', 'Node.js', 'Express', 'MongoDB Atlas', 'Cloudinary'],
+      },
+      {
+        title: 'SecureShare',
+        link: 'https://github.com/mpsinghji/SecureShare',
+        github: 'https://github.com/mpsinghji/SecureShare',
+        img: 'https://i.postimg.cc/tR3r16R6/secureshare.png',
+        tag: 'Document Security / Cloud',
+        badge: 'Enterprise SaaS',
+        category: 'web',
+        desc: 'High-security document distribution platform with granular access audits, encrypted cloud storage via Supabase S3, and Neon PostgreSQL.',
+        stack: ['React', 'Node.js', 'PostgreSQL', 'Supabase', 'JWT'],
+      },
+      {
+        title: 'CallHelper',
+        link: 'https://github.com/mpsinghji/Call-Helper',
+        github: 'https://github.com/mpsinghji/Call-Helper',
+        apkLink: 'https://github.com/mpsinghji/Call-Helper/releases',
+        img: callHelperMockup,
+        tag: 'Android System App',
+        badge: 'Android Native',
+        category: 'mobile',
+        desc: 'Intelligent incoming-call assistant that announces callers over Bluetooth/speaker, handles voice commands, and integrates Truecaller.',
+        stack: ['Kotlin', 'Android SDK', 'Telecom API', 'Bluetooth SCO'],
+        isMobileShot: true,
+      },
+      {
+        title: 'Dynamic Edge AI',
+        link: 'https://github.com/mpsinghji/DynamicEdgeAI',
+        github: 'https://github.com/mpsinghji/DynamicEdgeAI',
+        apkLink: 'https://github.com/mpsinghji/DynamicEdgeAI/releases',
+        img: dynamicEdgeMockup,
+        tag: 'Adaptive Edge AI',
+        badge: 'Android AI Research',
+        category: 'mobile',
+        desc: 'Adaptive edge-cloud AI system dynamically routing inference between on-device LLaMA C++ and Cloud Gemini based on RAM & thermals.',
+        stack: ['Kotlin', 'Android SDK', 'LLaMA C++', 'Gemini API'],
+        isMobileShot: true,
+      },
+      {
         title: 'BlogVerse',
         link: 'https://mpji-blogverse.vercel.app',
-        img: 'https://i.postimg.cc/hjP3xQBg/Blog_Verse.png',
-        tag: 'Blog App',
-        desc: 'Full-featured blogging platform with auth, rich text editor, comments and user profiles.',
+        github: 'https://github.com/mpsinghji/BlogVerse',
+        img: blogVerseImg,
+        tag: 'Publishing Platform',
+        badge: 'MERN Web App',
+        category: 'web',
+        desc: 'Full-featured blogging platform with authentication, rich text editor, comments system, interactions, and user profiles.',
         stack: ['React', 'Node.js', 'MongoDB', 'JWT'],
       },
       {
         title: 'CampusSync',
         link: 'https://mpji-campus-sync.vercel.app/',
-        img: 'https://i.postimg.cc/zBXPWH14/Campus_Sync.png',
+        github: 'https://github.com/mpsinghji/Campus-Sync',
+        img: campusSyncImg,
         tag: 'Edu Management',
-        desc: 'College management system with attendance, grades, notices, and student-faculty portal.',
+        badge: 'Full Stack',
+        category: 'web',
+        desc: 'College administration portal managing attendance, grade tracking, departmental circulars, and student-faculty records.',
         stack: ['React', 'Express', 'MongoDB', 'Tailwind'],
       },
       {
         title: 'JobHunt',
         link: 'https://mpji-jobhunt.vercel.app/',
-        img: 'https://i.postimg.cc/Y9qygLHM/Job_Portal.png',
-        tag: 'Job Portal',
-        desc: 'Job portal where employers post listings and candidates apply with real-time notifications.',
+        github: 'https://github.com/mpsinghji/JobHunt',
+        img: jobHuntImg,
+        tag: 'Recruitment Portal',
+        badge: 'Full Stack',
+        category: 'web',
+        desc: 'Recruitment platform connecting employers and candidates with real-time application updates, job listings, and alerts.',
         stack: ['React', 'Node.js', 'MongoDB', 'Socket.io'],
       },
-      { title: 'FileForge',
+      {
+        title: 'FileForge',
         link: 'https://mpji-fileforge.vercel.app/',
-        img: 'https://i.postimg.cc/FRsnckQx/File_Forge.png',
-        tag: 'Utility Tool',
-        desc: 'File utility toolkit for quick, clean, and efficient file handling workflows.',
-        stack: ['React', 'TypeScript', 'Vite', 'UI'],
+        github: 'https://github.com/mpsinghji/FileForge',
+        img: fileForgeImg,
+        tag: 'Utility Suite',
+        badge: 'Vite & TypeScript',
+        category: 'tools',
+        desc: 'Client-side file utility toolkit engineered for fast document transformations, format conversions, and workflow processing.',
+        stack: ['React', 'TypeScript', 'Vite', 'Tailwind'],
       },
       {
-        title: 'YT speed controller extension',
+        title: 'YT Speed Controller',
         link: 'https://mpji-yt-speed-controller.vercel.app/',
-        img: 'https://i.postimg.cc/wvf4kx6C/Speed_Control.png',
-        tag: 'YT Speed Controller',
-        desc: 'Browser utility to control YouTube playback speed with cleaner controls and better UX.',
+        github: 'https://github.com/mpsinghji/speed-controller',
+        img: speedControlImg,
+        tag: 'Browser Utility',
+        badge: 'Chrome Extension',
+        category: 'tools',
+        desc: 'Lightweight Chrome extension giving YouTube users granular playback speed adjustments, quick hotkeys, and sleek overlay.',
         stack: ['JavaScript', 'Chrome API', 'UI', 'Web'],
       },
-      {
-        title: 'Dynamic Edge AI',
-        link: 'https://mpji-dynamic-edge-ai.vercel.app/',
-        img: 'https://i.postimg.cc/3RJbp0H6/dynamic_Edge_Ai.png',
-        tag: 'AI Tool',
-        desc: 'AI-powered utility built around a mobile-first interface for fast, focused interactions.',
-        stack: ['React', 'AI API', 'Tailwind', 'Mobile UI'],
-        isMobileShot: true,
-      }
     ],
     [],
   )
@@ -271,34 +338,37 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!showAllProjects) return
-    const cards = Array.from(document.querySelectorAll<HTMLElement>('.pcard'))
-    const onMoveByCard = new Map<HTMLElement, (e: MouseEvent) => void>()
-    const onLeaveByCard = new Map<HTMLElement, () => void>()
+    const timer = setTimeout(() => {
+      const cards = Array.from(document.querySelectorAll<HTMLElement>('.pcard'))
+      const onMoveByCard = new Map<HTMLElement, (e: MouseEvent) => void>()
+      const onLeaveByCard = new Map<HTMLElement, () => void>()
 
-    cards.forEach((card) => {
-      const onMove = (e: MouseEvent) => {
-        const r = card.getBoundingClientRect()
-        const x = e.clientX / r.width - r.left / r.width - 0.5
-        const y = e.clientY / r.height - r.top / r.height - 0.5
-        gsap.to(card, { rotateY: x * 8, rotateX: -y * 8, duration: 0.4, ease: 'power2.out', transformPerspective: 800 })
-      }
-      const onLeave = () => gsap.to(card, { rotateY: 0, rotateX: 0, duration: 0.6, ease: 'power3.out' })
-      onMoveByCard.set(card, onMove)
-      onLeaveByCard.set(card, onLeave)
-      card.addEventListener('mousemove', onMove)
-      card.addEventListener('mouseleave', onLeave)
-    })
-
-    return () => {
       cards.forEach((card) => {
-        const om = onMoveByCard.get(card)
-        const ol = onLeaveByCard.get(card)
-        if (om) card.removeEventListener('mousemove', om)
-        if (ol) card.removeEventListener('mouseleave', ol)
+        const onMove = (e: MouseEvent) => {
+          const r = card.getBoundingClientRect()
+          const x = e.clientX / r.width - r.left / r.width - 0.5
+          const y = e.clientY / r.height - r.top / r.height - 0.5
+          gsap.to(card, { rotateY: x * 8, rotateX: -y * 8, duration: 0.4, ease: 'power2.out', transformPerspective: 800 })
+        }
+        const onLeave = () => gsap.to(card, { rotateY: 0, rotateX: 0, duration: 0.6, ease: 'power3.out' })
+        onMoveByCard.set(card, onMove)
+        onLeaveByCard.set(card, onLeave)
+        card.addEventListener('mousemove', onMove)
+        card.addEventListener('mouseleave', onLeave)
       })
-    }
-  }, [showAllProjects])
+
+      return () => {
+        cards.forEach((card) => {
+          const om = onMoveByCard.get(card)
+          const ol = onLeaveByCard.get(card)
+          if (om) card.removeEventListener('mousemove', om)
+          if (ol) card.removeEventListener('mouseleave', ol)
+        })
+      }
+    }, 50)
+
+    return () => clearTimeout(timer)
+  }, [activeCategory])
 
   useEffect(() => {
     // Three.js scenes (ported from HTML, minimal cleanup)
@@ -1221,26 +1291,15 @@ function App() {
           <div className="proj-mq-inner">
             <div className="proj-strip">
               <div className="proj-strip-track">
-                {[...projects, ...projects, ...projects].map((p, idx) => (
+                {[...projects, ...projects].map((p, idx) => (
                   <a key={`t1-${idx}`} className="pslide" href={p.link} target="_blank" rel="noreferrer">
-                    {p.img ? (
-                      <img className={`pslide-img ${p.isMobileShot ? 'pslide-img-mobile' : ''}`} src={p.img} alt={p.title} />
-                    ) : (
-                      <div
-                        className="pslide-img"
-                        style={{
-                          background: '#061410',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '10px',
-                          letterSpacing: '2px',
-                          color: '#2d5c40',
-                        }}
-                      >
-                        COMING SOON
-                      </div>
-                    )}
+                    <div className="pslide-img-wrap">
+                      {p.img ? (
+                        <img className="pslide-img" src={p.img} alt={p.title} loading="lazy" />
+                      ) : (
+                        <div className="pslide-img pcard-img-fallback">COMING SOON</div>
+                      )}
+                    </div>
                     <div className="pslide-foot">
                       <div className="pslide-tag">{p.tag}</div>
                       <div className="pslide-ttl">{p.title}</div>
@@ -1251,29 +1310,18 @@ function App() {
             </div>
             <div className="proj-strip">
               <div className="proj-strip-track">
-                {[...projects, ...projects, ...projects]
+                {[...projects, ...projects]
                   .slice()
                   .reverse()
                   .map((p, idx) => (
                     <a key={`t2-${idx}`} className="pslide" href={p.link} target="_blank" rel="noreferrer">
-                      {p.img ? (
-                        <img className={`pslide-img ${p.isMobileShot ? 'pslide-img-mobile' : ''}`} src={p.img} alt={p.title} />
-                      ) : (
-                        <div
-                          className="pslide-img"
-                          style={{
-                            background: '#061410',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '10px',
-                            letterSpacing: '2px',
-                            color: '#2d5c40',
-                          }}
-                        >
-                          COMING SOON
-                        </div>
-                      )}
+                      <div className="pslide-img-wrap">
+                        {p.img ? (
+                          <img className="pslide-img" src={p.img} alt={p.title} loading="lazy" />
+                        ) : (
+                          <div className="pslide-img pcard-img-fallback">COMING SOON</div>
+                        )}
+                      </div>
                       <div className="pslide-foot">
                         <div className="pslide-tag">{p.tag}</div>
                         <div className="pslide-ttl">{p.title}</div>
@@ -1285,86 +1333,89 @@ function App() {
           </div>
         </div>
 
-        {!showAllProjects ? (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '3rem', marginBottom: '2rem' }}>
-            <button className="hbtn fill" onClick={() => setShowAllProjects(true)} style={{ cursor: 'pointer', zIndex: 10 }}>
-              View All Projects
-            </button>
-          </div>
-        ) : null}
-
-        <AnimatePresence>
-          {showAllProjects && (
-            <motion.div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 9990,
-                backgroundColor: 'rgba(2, 12, 8, 0.95)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                overflowY: 'auto',
-                padding: '4rem 2rem'
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+        <div className="proj-filters">
+          {[
+            { id: 'all', label: `All Projects (${projects.length})` },
+            { id: 'web', label: 'Full-Stack & SaaS' },
+            { id: 'mobile', label: 'Android Apps' },
+            { id: 'tools', label: 'Tools & Extensions' },
+          ].map((f) => (
+            <button
+              key={f.id}
+              className={`proj-filter-btn ${activeCategory === f.id ? 'active' : ''}`}
+              onClick={() => setActiveCategory(f.id as any)}
             >
-              <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div className="proj-ht" style={{ margin: 0, fontSize: 'clamp(2.5rem, 5vw, 4rem)' }}>
-                    ALL <span className="dim">PROJECTS</span>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="proj-grid">
+          {projects
+            .filter((p) => activeCategory === 'all' || p.category === activeCategory)
+            .map((project, index) => {
+              const cardNumber = String(index + 1).padStart(2, '0')
+
+              return (
+                <motion.div
+                  className="pcard"
+                  id={`pfc${index + 1}`}
+                  key={project.title}
+                  layout
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, delay: index * 0.05 }}
+                >
+                  <div className="pcard-vis">
+                    {project.img ? (
+                      <img className="pcard-img" src={project.img} alt={project.title} loading="lazy" />
+                    ) : (
+                      <div className="pcard-img pcard-img-fallback">COMING SOON</div>
+                    )}
+                    {project.badge && <span className="pcard-badge">{project.badge}</span>}
+                    <div className="pcard-num">{cardNumber}</div>
                   </div>
-                  <button className="hbtn ghost" onClick={() => setShowAllProjects(false)} style={{ cursor: 'pointer' }}>
-                    Close [X]
-                  </button>
-                </div>
-
-                <div className="proj-grid" style={{ padding: '0', margin: '0' }}>
-                  {projects.map((project, index) => {
-                    const cardNumber = String(index + 1).padStart(2, '0')
-
-                    return (
-                      <motion.div 
-                        className="pcard" 
-                        id={`pfc${index + 1}`} 
-                        key={project.title}
-                        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        transition={{ duration: 0.6, delay: index * 0.1, type: 'spring', stiffness: 100 }}
-                      >
-                        <div className="pcard-vis">
-                          {project.img ? (
-                            <img className={`pcard-img ${project.isMobileShot ? 'pcard-img-mobile' : ''}`} src={project.img} alt={project.title} />
-                          ) : (
-                            <div className="pcard-img pcard-img-fallback">COMING SOON</div>
+                  <div className="pcard-body">
+                    <div className="pcard-tag">{project.tag}</div>
+                    <div className="pcard-ttl">{project.title}</div>
+                    <div className="pcard-desc">{project.desc}</div>
+                    <div className="pcard-stack">
+                      {project.stack.map((c) => (
+                        <span key={c} className="chip">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="pcard-actions">
+                      {project.isMobileShot ? (
+                        <>
+                          <a href={project.github || project.link} target="_blank" rel="noreferrer" className="pcard-link">
+                            GitHub Repo ↗
+                          </a>
+                          {project.apkLink && (
+                            <a href={project.apkLink} target="_blank" rel="noreferrer" className="pcard-btn-sec">
+                              Download APK ⤓
+                            </a>
                           )}
-                          <div className="pcard-num">{cardNumber}</div>
-                        </div>
-                        <div className="pcard-body">
-                          <div className="pcard-tag">{project.tag}</div>
-                          <div className="pcard-ttl">{project.title}</div>
-                          <div className="pcard-desc">{project.desc}</div>
-                          <div className="pcard-stack">
-                            {project.stack.map((c) => (
-                              <span key={c} className="chip">
-                                {c}
-                              </span>
-                            ))}
-                          </div>
+                        </>
+                      ) : (
+                        <>
                           <a href={project.link} target="_blank" rel="noreferrer" className="pcard-link">
                             Live Demo →
                           </a>
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                          {project.github && (
+                            <a href={project.github} target="_blank" rel="noreferrer" className="pcard-btn-sec">
+                              Source Code ↗
+                            </a>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            })}
+        </div>
       </section>
 
       <section id="experience">
