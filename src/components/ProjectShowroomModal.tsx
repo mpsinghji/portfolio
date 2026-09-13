@@ -14,6 +14,7 @@ export interface ProjectData {
   category: string
   badge?: string
   isMobileShot?: boolean
+  isExtension?: boolean
   isPrivate?: boolean
   architectureDetails?: {
     overview: string
@@ -35,7 +36,7 @@ export const ProjectShowroomModal: React.FC<ProjectShowroomModalProps> = ({
   onClose,
   onSelectProject,
 }) => {
-  const [tilt, setTilt] = useState({ x: 0, y: 0, glareX: 50, glareY: 50 })
+  const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const cardRef = useRef<HTMLDivElement>(null)
 
   // Keyboard navigation: ESC to exit, Left/Right arrows to cycle
@@ -76,20 +77,19 @@ export const ProjectShowroomModal: React.FC<ProjectShowroomModalProps> = ({
     const rotateX = ((y - centerY) / centerY) * -12
     const rotateY = ((x - centerX) / centerX) * 12
 
-    const glareX = (x / rect.width) * 100
-    const glareY = (y / rect.height) * 100
-
-    setTilt({ x: rotateX, y: rotateY, glareX, glareY })
+    setTilt({ x: rotateX, y: rotateY })
   }
 
   const handleMouseLeave = () => {
-    setTilt({ x: 0, y: 0, glareX: 50, glareY: 50 })
+    setTilt({ x: 0, y: 0 })
   }
 
   if (!project) return null
 
   const currentIndex = allProjects.findIndex((p) => p.title === project.title)
   const projectCode = `PRJ-${String(currentIndex + 1).padStart(2, '0')}`
+
+  const isExtension = Boolean(project.isExtension || project.badge === 'Chrome Extension')
 
   // Default deep architectural specs if none provided
   const arch = project.architectureDetails || {
@@ -101,10 +101,17 @@ export const ProjectShowroomModal: React.FC<ProjectShowroomModalProps> = ({
       'Engineered for responsive multi-device fidelity',
     ],
     systemSpecs: [
-      { label: 'RUNTIME', value: project.isMobileShot ? 'Android ART / Native' : 'Node.js / React 19' },
+      {
+        label: 'RUNTIME',
+        value: project.isMobileShot
+          ? 'Android ART / Native'
+          : isExtension
+          ? 'Chrome V8 / Extension API'
+          : 'Node.js / React 19',
+      },
       { label: 'ARCHITECTURE', value: project.tag },
       { label: 'SECURITY', value: project.isPrivate ? 'Proprietary IP' : 'Open Source MIT' },
-      { label: 'STATUS', value: 'Production Ready' },
+      { label: 'STATUS', value: isExtension ? 'Extension on GitHub' : 'Production Ready' },
     ],
   }
 
@@ -191,14 +198,6 @@ export const ProjectShowroomModal: React.FC<ProjectShowroomModalProps> = ({
                 transition: 'transform 0.12s ease-out',
               }}
             >
-              {/* Dynamic Glare Overlay */}
-              <div
-                className="showroom-glare"
-                style={{
-                  background: `radial-gradient(circle at ${tilt.glareX}% ${tilt.glareY}%, rgba(0, 255, 106, 0.25) 0%, transparent 65%)`,
-                }}
-              />
-
               <div className="showroom-img-wrap">
                 {project.img ? (
                   <img src={project.img} alt={project.title} className="showroom-img" />
@@ -209,7 +208,9 @@ export const ProjectShowroomModal: React.FC<ProjectShowroomModalProps> = ({
 
               <div className="showroom-card-footer">
                 <span className="showroom-badge-tag">{project.tag}</span>
-                <span className="showroom-badge-status">● VERIFIED PRODUCTION</span>
+                <span className="showroom-badge-status">
+                  ● {isExtension ? 'VERIFIED EXTENSION' : 'VERIFIED PRODUCTION'}
+                </span>
               </div>
             </div>
             <div className="showroom-hint">3D HOLOGRAPHIC STAGE • MOVE CURSOR TO TILT</div>
@@ -272,7 +273,20 @@ export const ProjectShowroomModal: React.FC<ProjectShowroomModalProps> = ({
                 >
                   REQUEST DEMO WALKTHROUGH ✉
                 </a>
-              ) : project.link && !project.link.includes('github.com') ? (
+              ) : isExtension ? (
+                project.github ? (
+                  <a
+                    href={project.github}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="sbtn sbtn-primary"
+                    onMouseEnter={() => sfx.playHoverTick(1300)}
+                    onClick={() => sfx.playSelectThud()}
+                  >
+                    GET EXTENSION (GITHUB) ↗
+                  </a>
+                ) : null
+              ) : !isExtension && project.link && !project.link.includes('github.com') ? (
                 <a
                   href={project.link}
                   target="_blank"
@@ -296,7 +310,7 @@ export const ProjectShowroomModal: React.FC<ProjectShowroomModalProps> = ({
                 >
                   🔒 REQUEST CODE ACCESS
                 </a>
-              ) : project.github ? (
+              ) : project.github && !isExtension ? (
                 <a
                   href={project.github}
                   target="_blank"

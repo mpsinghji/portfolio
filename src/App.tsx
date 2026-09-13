@@ -305,6 +305,68 @@ function App() {
   const [currentView, setCurrentView] = useState<'home' | 'work' | 'about' | 'skills' | 'contact'>('home')
   const [direction, setDirection] = useState<'left' | 'right' | 'up' | 'down' | 'center'>('center')
   const [selectedShowroomProject, setSelectedShowroomProject] = useState<ProjectData | null>(null)
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'experience' | 'education'>('all')
+
+  const milestones = useMemo(
+    () => [
+      {
+        id: 'm1',
+        category: 'experience' as const,
+        period: '2024 — Present',
+        role: 'Full-Stack & Systems Developer',
+        org: 'Freelance & Open Source · Remote',
+        statusBadge: '● ACTIVE PRODUCTION',
+        desc: 'Architected and shipped production SaaS platforms (DentalOS, SecureShare) and Android native telephony / AI edge inference systems.',
+        tags: ['React 19', 'Node.js', 'PostgreSQL', 'Kotlin', 'Edge AI', 'Tailwind'],
+      },
+      {
+        id: 'm2',
+        category: 'experience' as const,
+        period: '2023 — 2024',
+        role: 'Open-Source Contributor & Tools Developer',
+        org: 'Developer Communities & GitHub Ecosystem',
+        statusBadge: '● OPEN SOURCE',
+        desc: 'Contributed to developer utilities, REST API optimizations, and Chrome productivity extensions including media key controllers.',
+        tags: ['JavaScript', 'Chrome Extension API', 'Git/GitHub', 'REST APIs', 'Vite'],
+      },
+      {
+        id: 'm3',
+        category: 'education' as const,
+        period: '2022 — 2026',
+        role: 'B.Tech in Computer Science & Engineering',
+        org: 'University Engineering Program',
+        statusBadge: '● GRADUATED / COMPLETED',
+        desc: 'Completed comprehensive 4-year engineering degree with rigorous specialization in Data Structures & Algorithms, Distributed Systems, Operating Systems, Database Management, and Cryptography.',
+        tags: ['Data Structures & Algorithms', 'Distributed Systems', 'Operating Systems', 'DBMS', 'Computer Networks'],
+      },
+      {
+        id: 'm4',
+        category: 'education' as const,
+        period: 'Completed 2022',
+        role: 'Senior Secondary Education (Class XII)',
+        org: 'High School / Senior Secondary Board',
+        statusBadge: '● COMPLETED (2022)',
+        desc: 'Completed Higher Secondary education with core focus on Non-Medical Sciences (Physics, Chemistry, and Advanced Mathematics), developing strong analytical problem-solving foundations.',
+        tags: ['Advanced Mathematics', 'Physics', 'Chemistry', 'Analytical Reasoning'],
+      },
+      {
+        id: 'm5',
+        category: 'education' as const,
+        period: 'Completed 2020',
+        role: 'Secondary School Examination (Class X)',
+        org: 'High School / Secondary Board',
+        statusBadge: '● COMPLETED (2020)',
+        desc: 'Completed Secondary School Matriculation with distinction across Mathematics, General Sciences, and Information Technology fundamentals.',
+        tags: ['Foundational Mathematics', 'General Science', 'Computer Fundamentals'],
+      },
+    ],
+    [],
+  )
+
+  const filteredMilestones = useMemo(
+    () => milestones.filter((m) => timelineFilter === 'all' || m.category === timelineFilter),
+    [milestones, timelineFilter],
+  )
 
   const projects = useMemo<Project[]>(
     () => [
@@ -479,14 +541,30 @@ function App() {
       },
       {
         title: 'YT Speed Controller',
-        link: 'https://mpji-yt-speed-controller.vercel.app/',
-        github: 'https://github.com/mpsinghji/speed-controller',
+        link: '',
+        github: 'https://github.com/mpsinghji/mediakey-controller',
         img: speedControlImg,
         tag: 'Browser Utility',
         badge: 'Chrome Extension',
         category: 'tools',
+        isExtension: true,
         desc: 'Lightweight Chrome extension giving YouTube users granular playback speed adjustments, quick hotkeys, and sleek overlay.',
         stack: ['JavaScript', 'Chrome API', 'UI', 'Web'],
+        architectureDetails: {
+          overview: 'High-performance browser extension providing seamless YouTube video element hook injection and precise speed step modulation.',
+          keyFeatures: [
+            'Direct HTML5 Video Media Element API binding & event listeners',
+            'Floating non-intrusive HUD with custom playback speed stepped presets',
+            'Hotkeys mapping engine responding to keyboard accelerators',
+            'Manifest V3 compliant with zero background telemetry overhead',
+          ],
+          systemSpecs: [
+            { label: 'RUNTIME', value: 'Chrome Extension V3' },
+            { label: 'TARGET', value: 'YouTube HTML5 Player' },
+            { label: 'PERMISSIONS', value: 'ActiveTab / Storage' },
+            { label: 'STATUS', value: 'Published on GitHub' },
+          ],
+        },
       },
     ],
     [],
@@ -1477,9 +1555,26 @@ function App() {
                                   </a>
                                 )}
                               </div>
+                            ) : (project.isExtension || project.badge === 'Chrome Extension') ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}>
+                                <span style={{ fontFamily: 'var(--mono)', fontSize: '11px', letterSpacing: '1px', color: 'var(--lime)' }}>
+                                  🧩 Chrome Extension
+                                </span>
+                                {project.github && (
+                                  <a
+                                    href={project.github}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="pcard-btn-sec"
+                                    onMouseEnter={() => sfx.playHoverTick(1100)}
+                                  >
+                                    GitHub Repo ↗
+                                  </a>
+                                )}
+                              </div>
                             ) : (
                               <>
-                                {project.link && !project.link.includes('github.com') ? (
+                                {!project.isExtension && project.badge !== 'Chrome Extension' && project.link && !project.link.includes('github.com') ? (
                                   <a
                                     href={project.link}
                                     target="_blank"
@@ -1540,33 +1635,58 @@ function App() {
             >
               <section id="about" style={{ paddingTop: '2.5rem' }}>
                 <div className="about-text" id="about-txt">
-                  <div className="eyebrow">Background &amp; Philosophy</div>
+                  <div className="eyebrow">// OPERATOR PROFILE &amp; PHILOSOPHY</div>
                   <h1 className="about-h">
                     ENGINEERING
                     <br />
                     <span className="line-g">RELIABILITY</span>
                   </h1>
                   <p className="about-p">
-                    I'm <strong>Manpreet Singh</strong>, a Full-Stack Developer &amp; Systems Engineer focused on creating reliable, scalable digital products.
+                    I'm <strong>Manpreet Singh</strong>, a Full-Stack Developer &amp; Systems Engineer. I have graduated with my <strong>B.Tech in Computer Science &amp; Engineering (2022 — 2026)</strong>, building on strong analytical foundations in senior secondary non-medical science (completed 2022) and matriculation (completed 2020).
                   </p>
                   <p className="about-p">
-                    My work spans end-to-end cloud architectures (React, Node.js, MongoDB Atlas, Neon Postgres) to Android system services and on-device edge AI routing.
+                    My engineering work bridges end-to-end cloud architectures (React, Node.js, MongoDB Atlas, Neon PostgreSQL) to Android system services and on-device edge AI routing.
                   </p>
-                  <div className="about-facts">
-                    {[
-                      { l: 'Location', v: 'India (Open to Remote / Relocation)' },
-                      { l: 'Degree', v: 'B.Tech Computer Science & Eng. (2025)' },
-                      { l: 'Focus', v: 'Full-Stack Architecture & Edge Systems' },
-                      { l: 'Status', v: 'Available for Hire' },
-                    ].map((f) => (
-                      <div key={f.l} className="fact">
-                        <div className="fact-k">{f.l}</div>
-                        <div className="fact-v">{f.v}</div>
+
+                  <div className="about-facts-grid">
+                    <div className="hud-fact-card">
+                      <div className="hud-fact-hdr">
+                        <span className="hud-fact-label">ACADEMIC DEGREE</span>
+                        <span className="hud-fact-badge active">GRADUATED</span>
                       </div>
-                    ))}
+                      <div className="hud-fact-val">B.Tech in CSE</div>
+                      <div className="hud-fact-sub">2022 — 2026 · Completed</div>
+                    </div>
+
+                    <div className="hud-fact-card">
+                      <div className="hud-fact-hdr">
+                        <span className="hud-fact-label">AVAILABILITY</span>
+                        <span className="hud-fact-badge active">● LIVE</span>
+                      </div>
+                      <div className="hud-fact-val">Available for Hire</div>
+                      <div className="hud-fact-sub">Full-Time &amp; Remote Roles</div>
+                    </div>
+
+                    <div className="hud-fact-card">
+                      <div className="hud-fact-hdr">
+                        <span className="hud-fact-label">LOCATION</span>
+                        <span className="hud-fact-badge">GLOBAL</span>
+                      </div>
+                      <div className="hud-fact-val">India</div>
+                      <div className="hud-fact-sub">Open to Remote &amp; Relocation</div>
+                    </div>
+
+                    <div className="hud-fact-card">
+                      <div className="hud-fact-hdr">
+                        <span className="hud-fact-label">ACADEMIC TIMELINE</span>
+                        <span className="hud-fact-badge">VERIFIED</span>
+                      </div>
+                      <div className="hud-fact-val">10th ('20) → 12th ('22) → B.Tech ('26)</div>
+                      <div className="hud-fact-sub">Science &amp; Engineering Track</div>
+                    </div>
                   </div>
 
-                  <div className="hero-btns" style={{ marginTop: '2.5rem' }}>
+                  <div className="hero-btns" style={{ marginTop: '1.5rem' }}>
                     <button
                       type="button"
                       className="hbtn fill"
@@ -1586,47 +1706,75 @@ function App() {
                   </div>
                 </div>
 
-                <div className="about-code-side">
-                  <div className="exp-h" style={{ fontSize: '2.5rem', marginBottom: '1.5rem' }}>
-                    CAREER <span style={{ WebkitTextStroke: '1px rgba(0,255,106,.25)', color: 'transparent' }}>MILESTONES</span>
+                <div className="about-timeline-side">
+                  <div className="timeline-header-row">
+                    <div>
+                      <div className="eyebrow" style={{ marginBottom: '0.4rem' }}>// CHRONOLOGICAL RECORD</div>
+                      <div className="exp-h" style={{ fontSize: 'clamp(1.8rem, 3.2vw, 2.6rem)', marginBottom: '0', lineHeight: 1 }}>
+                        CAREER &amp; <span style={{ WebkitTextStroke: '1px rgba(0,255,106,.25)', color: 'transparent' }}>EDUCATION</span>
+                      </div>
+                    </div>
+
+                    <div className="timeline-filter-tabs">
+                      <button
+                        type="button"
+                        className={`tl-tab ${timelineFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => {
+                          sfx.playSelectThud()
+                          setTimelineFilter('all')
+                        }}
+                        onMouseEnter={() => sfx.playHoverTick(1100)}
+                      >
+                        ALL ({milestones.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`tl-tab ${timelineFilter === 'experience' ? 'active' : ''}`}
+                        onClick={() => {
+                          sfx.playSelectThud()
+                          setTimelineFilter('experience')
+                        }}
+                        onMouseEnter={() => sfx.playHoverTick(1100)}
+                      >
+                        EXPERIENCE (2)
+                      </button>
+                      <button
+                        type="button"
+                        className={`tl-tab ${timelineFilter === 'education' ? 'active' : ''}`}
+                        onClick={() => {
+                          sfx.playSelectThud()
+                          setTimelineFilter('education')
+                        }}
+                        onMouseEnter={() => sfx.playHoverTick(1100)}
+                      >
+                        EDUCATION (3)
+                      </button>
+                    </div>
                   </div>
+
                   <div className="tl">
-                    <div className="tli" id="ti1">
-                      <div className="tli-dot" />
-                      <div className="tli-p">2024 — Present</div>
-                      <div className="tli-r">Full-Stack &amp; Systems Developer</div>
-                      <div className="tli-org">Freelance &amp; Open Source · Remote</div>
-                      <div className="tli-d">
-                        Architected and shipped production SaaS platforms (DentalOS, SecureShare) and Android native telephony tools.
-                      </div>
-                      <div className="tli-tags">
-                        {['React 19', 'Node.js', 'PostgreSQL', 'Kotlin', 'Edge AI'].map((t) => (
-                          <span key={t} className="tli-tag">
-                            {t}
+                    {filteredMilestones.map((m) => (
+                      <div key={m.id} className="tli">
+                        <div className={`tli-dot ${m.category === 'education' ? 'dot-cyan' : 'dot-green'}`} />
+                        <div className="tli-topline">
+                          <span className="tli-p">{m.period}</span>
+                          <span className={`tli-type-badge ${m.category === 'education' ? 'badge-cyan' : 'badge-green'}`}>
+                            {m.category === 'education' ? '🎓 ACADEMICS' : '💼 EXPERIENCE'}
                           </span>
-                        ))}
+                          <span className="tli-status-pill">{m.statusBadge}</span>
+                        </div>
+                        <div className="tli-r">{m.role}</div>
+                        <div className="tli-org">{m.org}</div>
+                        <div className="tli-d">{m.desc}</div>
+                        <div className="tli-tags">
+                          {m.tags.map((t) => (
+                            <span key={t} className="tli-tag">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="tli" id="ti2">
-                      <div className="tli-dot" />
-                      <div className="tli-p">2023 — 2024</div>
-                      <div className="tli-r">Open-Source Contributor</div>
-                      <div className="tli-org">Developer Communities</div>
-                      <div className="tli-d">
-                        Contributed to developer tools, REST API optimizations, and Chrome productivity extensions.
-                      </div>
-                    </div>
-
-                    <div className="tli" id="ti3">
-                      <div className="tli-dot" />
-                      <div className="tli-p">2021 — 2025</div>
-                      <div className="tli-r">B.Tech Computer Science &amp; Engineering</div>
-                      <div className="tli-org">University Program</div>
-                      <div className="tli-d">
-                        Core focus on Data Structures, Distributed Systems, Operating Systems, and Cryptography.
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </section>
@@ -1812,7 +1960,7 @@ function App() {
 
       <footer>
         <div className="ft-logo">[MP.DEV]</div>
-        <div className="ft-copy">Designed &amp; built by Manpreet Singh · © 2025</div>
+        <div className="ft-copy">Designed &amp; built by Manpreet Singh · © 2026</div>
       </footer>
 
       {/* 3D Full-Screen Project Inspect Showroom */}
