@@ -9,14 +9,6 @@ import emailjs from '@emailjs/browser'
 import { sfx } from './utils/audio'
 import { ProjectShowroomModal, type ProjectData } from './components/ProjectShowroomModal'
 
-import callHelperMockup from './assets/callhelper_real_mockup.jpg'
-import dynamicEdgeMockup from './assets/dynamicedge_real_mockup.jpg'
-import blogVerseImg from './assets/BlogVerse.png'
-import campusSyncImg from './assets/CampusSync.png'
-import jobHuntImg from './assets/JobPortal.png'
-import fileForgeImg from './assets/FileForge.png'
-import speedControlImg from './assets/SpeedControl.png'
-
 gsap.registerPlugin(ScrollTrigger, TextPlugin)
 
 export type Project = ProjectData & {
@@ -374,7 +366,7 @@ function App() {
         title: 'DentalOS',
         link: 'https://github.com/mpsinghji/DentalOS',
         github: 'https://github.com/mpsinghji/DentalOS',
-        img: 'https://i.postimg.cc/Y0hJ7qYB/dental-OS.png',
+        img: 'https://i.postimg.cc/CxLvB6yr/dental-OS-real.png',
         tag: 'Clinic SaaS / Healthcare',
         badge: 'Full-Stack SaaS',
         category: 'web',
@@ -427,7 +419,7 @@ function App() {
         title: 'CallHelper',
         link: '',
         github: 'https://github.com/mpsinghji/Call-Helper',
-        img: callHelperMockup,
+        img: 'https://i.postimg.cc/pLX0h1N0/callhelper-real-mockup.jpg',
         tag: 'Android System Daemon',
         badge: 'Android Native',
         category: 'mobile',
@@ -454,7 +446,7 @@ function App() {
         title: 'Dynamic Edge AI',
         link: '',
         github: 'https://github.com/mpsinghji/DynamicEdgeAI',
-        img: dynamicEdgeMockup,
+        img: 'https://i.postimg.cc/MpKsMrk4/dynamicedge-real-mockup.jpg',
         tag: 'Adaptive Edge AI',
         badge: 'Android AI Research',
         category: 'mobile',
@@ -482,7 +474,7 @@ function App() {
         title: 'BlogVerse',
         link: 'https://mpji-blogverse.vercel.app',
         github: 'https://github.com/mpsinghji/BlogVerse',
-        img: blogVerseImg,
+        img: 'https://i.postimg.cc/0y2tMHgF/Blog-Verse.png',
         tag: 'Publishing Platform',
         badge: 'MERN Web App',
         category: 'web',
@@ -508,7 +500,7 @@ function App() {
         title: 'CampusSync',
         link: 'https://mpji-campus-sync.vercel.app/',
         github: 'https://github.com/mpsinghji/Campus-Sync',
-        img: campusSyncImg,
+        img: 'https://i.postimg.cc/2S8HbXpt/Campus-Sync.png',
         tag: 'Edu Management',
         badge: 'Full Stack',
         category: 'web',
@@ -519,7 +511,7 @@ function App() {
         title: 'JobHunt',
         link: 'https://mpji-jobhunt.vercel.app/',
         github: 'https://github.com/mpsinghji/JobHunt',
-        img: jobHuntImg,
+        img: 'https://i.postimg.cc/sg6Tp9y8/Job-Portal.png',
         tag: 'Recruitment Portal',
         badge: 'Full Stack',
         category: 'web',
@@ -530,7 +522,7 @@ function App() {
         title: 'FileForge',
         link: 'https://mpji-fileforge.vercel.app/',
         github: 'https://github.com/mpsinghji/FileForge',
-        img: fileForgeImg,
+        img: 'https://i.postimg.cc/4xLWzbZ2/File-Forge.png',
         tag: 'Utility Suite',
         badge: 'Vite & TypeScript',
         category: 'tools',
@@ -541,7 +533,7 @@ function App() {
         title: 'YT Speed Controller',
         link: '',
         github: 'https://github.com/mpsinghji/mediakey-controller',
-        img: speedControlImg,
+        img: 'https://i.postimg.cc/FHWTjgm2/Speed-Control.png',
         tag: 'Browser Utility',
         badge: 'Chrome Extension',
         category: 'tools',
